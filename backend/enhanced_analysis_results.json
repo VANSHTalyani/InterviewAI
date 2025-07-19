@@ -1,0 +1,180 @@
+{
+  "analysis": {
+    "overall_assessment": {
+      "confidence_score": 65.0,
+      "clarity_score": 70.0,
+      "professionalism_score": 75.0,
+      "engagement_score": 60.0,
+      "authenticity_score": 80.0,
+      "persuasiveness_score": 60.0,
+      "overall_score": 68.3
+    },
+    "speech_quality": {
+      "pace": "slow",
+      "pace_score": 60,
+      "articulation": "average",
+      "articulation_score": 75,
+      "fluency": "below_average",
+      "fluency_score": 65,
+      "coherence": "average",
+      "coherence_score": 70,
+      "vocal_variety": "limited",
+      "vocal_variety_score": 60
+    },
+    "filler_words": {
+      "total_count": 11,
+      "frequency_per_minute": 5.5,
+      "frequency_per_100_words": 6.92,
+      "common_fillers": [
+        {
+          "word": "um",
+          "count": 4,
+          "impact": "medium"
+        },
+        {
+          "word": "uh",
+          "count": 0,
+          "impact": "low"
+        },
+        {
+          "word": "like",
+          "count": 2,
+          "impact": "medium"
+        },
+        {
+          "word": "you know",
+          "count": 1,
+          "impact": "medium"
+        },
+        {
+          "word": "so",
+          "count": 2,
+          "impact": "low"
+        },
+        {
+          "word": "actually",
+          "count": 2,
+          "impact": "medium"
+        }
+      ],
+      "severity": "medium",
+      "impact_on_professionalism": 85,
+      "most_problematic_filler": "um"
+    },
+    "content_analysis": {
+      "structure": "average",
+      "structure_score": 70,
+      "relevance": "good",
+      "relevance_score": 85,
+      "depth": "moderate",
+      "depth_score": 70,
+      "examples_used": 1,
+      "technical_terms": 2,
+      "storytelling_quality": 65,
+      "logical_flow": 75,
+      "completeness": 75
+    },
+    "language_analysis": {
+      "vocabulary_sophistication": 70,
+      "grammar_accuracy": 80,
+      "sentence_variety": 60,
+      "professional_terminology": 75,
+      "repetitive_phrases": 2,
+      "complex_sentences_ratio": 25
+    },
+    "communication_strengths": [
+      "Relatable and authentic tone \u2013 the candidate expresses genuine excitement and passion.",
+      "Technical competence \u2013 Demonstrates knowledge of relevant technologies (React, Node.js).",
+      "Proactive acknowledgement of weakness \u2013 Addressing public speaking anxieties demonstrates self-awareness."
+    ],
+    "areas_for_improvement": [
+      "Excessive filler words ('um', 'like', 'actually', 'you know', 'so') significantly detract from fluency and professionalism. This impacts the overall perception of confidence and expertise.",
+      "Pace of speech is too slow, leading to a less engaging delivery. This could be perceived as lacking energy and enthusiasm. ",
+      "Limited sentence variety results in a monotone delivery.  More variation in sentence structure would enhance clarity and improve listener engagement."
+    ],
+    "recommendations": [
+      "Implement a daily practice of mindful speaking, focusing on eliminating filler words.  Record yourself speaking and analyze your patterns. (Timeline: 2 weeks)",
+      "Practice speaking at a slightly faster pace, maintaining clarity and articulation.  Use recordings to monitor progress.  (Timeline: 4 weeks)",
+      "Expand vocabulary and use varied sentence structures to enrich communication. Explore online grammar and writing resources. (Timeline: Ongoing)"
+    ],
+    "confidence_indicators": {
+      "positive_language_percentage": 60,
+      "decisive_statements": 2,
+      "hedge_words": 4,
+      "uncertainty_phrases": 2,
+      "self_deprecating_comments": 1,
+      "power_words_used": 2,
+      "confidence_trend": "declining"
+    },
+    "emotional_intelligence": {
+      "self_awareness_score": 80,
+      "empathy_indicators": 50,
+      "emotional_regulation": 60,
+      "social_skills_demonstration": 65
+    },
+    "interview_readiness": {
+      "score": 72.0,
+      "level": "intermediate",
+      "key_gaps": [
+        "Filler word usage",
+        "Pace of speech",
+        "Sentence structure variation"
+      ],
+      "ready_for_interview_level": "entry",
+      "estimated_preparation_time": "4 weeks"
+    },
+    "behavioral_indicators": {
+      "leadership_language": 70,
+      "problem_solving_approach": 60,
+      "collaboration_mentions": 1,
+      "achievement_orientation": 75,
+      "adaptability_indicators": 60
+    },
+    "speaking_patterns": {
+      "average_words_per_sentence": 13.25,
+      "longest_sentence_words": 24,
+      "shortest_sentence_words": 4,
+      "question_usage": 1,
+      "transition_quality": 65,
+      "pause_usage": "average"
+    },
+    "detailed_feedback": "The candidate's interview performance demonstrates a foundation of technical skills and genuine enthusiasm. However, several communication issues significantly detract from their overall impact. The excessive use of filler words ('um', 'like', 'actually') disrupts fluency and reduces perceived confidence.  The slow pace of speech, while indicative of careful thought, also limits engagement.  The relatively simple sentence structure contributes to a monotone delivery and hampers clarity. While acknowledging a weakness (public speaking) is positive, the candidate needs to demonstrate proactive mitigation strategies beyond simply joining a Toastmasters group. The content itself is relevant, but lacks depth and compelling storytelling.  Improved articulation and increased sentence variety would significantly enhance the overall professionalism and impact.  By focusing on eliminating filler words, increasing speech pace, and improving sentence structure variation, the candidate can significantly boost their confidence and interview performance.",
+    "industry_specific_notes": "In the software development industry, technical competence is crucial, but clear and confident communication is equally important for project success and client interaction.  The candidate's technical skills are evident, but communication weaknesses need addressing to effectively showcase their abilities.",
+    "comparison_to_benchmarks": "Compared to benchmark interview performances for entry-level software developer roles, this candidate falls slightly below average due to significant fluency and delivery issues.  Addressing these areas would significantly improve their competitiveness.",
+    "metadata": {
+      "service": "gemini",
+      "model": "gemini-1.5-flash",
+      "original_text_length": 947,
+      "analysis_timestamp": "2025-01-19T07:00:00Z",
+      "processing_successful": true
+    }
+  },
+  "report": {
+    "report_id": "interview_report_20250719_125702",
+    "files": {
+      "json": "reports/interview_report_20250719_125702.json",
+      "pdf": "reports/interview_report_20250719_125702.pdf",
+      "summary": "reports/interview_report_20250719_125702_summary.txt"
+    },
+    "metadata": {
+      "generated_at": "2025-07-19T12:57:02.179663",
+      "report_type": "comprehensive_interview_analysis",
+      "total_files": 3
+    },
+    "summary": {
+      "overall_score": 68.3,
+      "key_strengths": [
+        "Relatable and authentic tone \u2013 the candidate expresses genuine excitement and passion.",
+        "Technical competence \u2013 Demonstrates knowledge of relevant technologies (React, Node.js).",
+        "Proactive acknowledgement of weakness \u2013 Addressing public speaking anxieties demonstrates self-awareness."
+      ],
+      "key_improvements": [
+        "Excessive filler words ('um', 'like', 'actually', 'you know', 'so') significantly detract from fluency and professionalism. This impacts the overall perception of confidence and expertise.",
+        "Pace of speech is too slow, leading to a less engaging delivery. This could be perceived as lacking energy and enthusiasm. ",
+        "Limited sentence variety results in a monotone delivery.  More variation in sentence structure would enhance clarity and improve listener engagement."
+      ],
+      "readiness_level": "intermediate",
+      "recommendation": "Moderate performance. Practice structured responses and work on clarity of communication."
+    }
+  }
+}

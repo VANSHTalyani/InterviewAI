@@ -46,7 +46,7 @@ class ReportService:
     
     async def generate_report(self, db: Session, video_id: int, force: bool = False) -> Optional[ReportResponse]:
         """
-        Generate a comprehensive analysis report for a video
+        Generate a comprehensive analysis report for a video and enable download
         
         Args:
             db: Database session
@@ -54,7 +54,7 @@ class ReportService:
             force: Force regeneration even if report exists
             
         Returns:
-            Report response or None if failed
+            Report response with file paths for download or None if failed
         """
         try:
             # Check if report already exists
@@ -79,15 +79,18 @@ class ReportService:
             report = await self._create_report_record(db, video_id, report_content)
             
             # Generate PDF
+            pdf_path = ""
             if REPORTLAB_AVAILABLE:
                 pdf_path = await self._generate_pdf_report(report.id, report_content)
-                # Update report with PDF path
-                # report.pdf_path = pdf_path
-            
+
             # Generate JSON
             json_path = await self._generate_json_report(report.id, report_content)
-            # Update report with JSON path
-            # report.json_path = json_path
+
+            # Add file paths to report
+            report.files = {
+                'pdf': pdf_path,
+                'json': json_path
+            }
             
             logger.info(f"Report generated successfully for video {video_id}")
             return report

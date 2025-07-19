@@ -44,34 +44,84 @@ async def get_report(video_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Report retrieval failed")
 
 
-@router.get("/report/{video_id}/pdf")
-async def get_report_pdf(video_id: int, db: Session = Depends(get_db)):
+@router.get("/report/{video_id}/download/pdf")
+async def download_report_pdf(video_id: int, db: Session = Depends(get_db)):
     """
     Download the PDF report for a video
     """
     try:
+        # Get or generate report
         report = await report_service.get_report_by_video_id(db, video_id)
-        if not report or not report.pdf_path:
+        if not report:
+            report = await report_service.generate_report(db, video_id)
+            if not report:
+                raise HTTPException(status_code=404, detail="Report not available")
+        
+        # Check if report has files
+        pdf_path = getattr(report, 'files', {}).get('pdf', '')
+        if not pdf_path:
             raise HTTPException(status_code=404, detail="PDF report not found")
         
         # Read and return PDF file
-        if not os.path.exists(report.pdf_path):
+        if not os.path.exists(pdf_path):
             raise HTTPException(status_code=404, detail="PDF file not found")
         
-        with open(report.pdf_path, "rb") as pdf_file:
+        with open(pdf_path, "rb") as pdf_file:
             pdf_content = pdf_file.read()
         
         return Response(
             content=pdf_content,
             media_type="application/pdf",
-            headers={"Content-Disposition": f"attachment; filename=report_{video_id}.pdf"}
+            headers={
+                "Content-Disposition": f"attachment; filename=interview_analysis_report_{video_id}.pdf"
+            }
         )
         
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"PDF report retrieval failed: {e}")
-        raise HTTPException(status_code=500, detail="PDF report retrieval failed")
+        logger.error(f"PDF report download failed: {e}")
+        raise HTTPException(status_code=500, detail="PDF report download failed")
+
+
+@router.get("/report/{video_id}/download/json")
+async def download_report_json(video_id: int, db: Session = Depends(get_db)):
+    """
+    Download the JSON report for a video
+    """
+    try:
+        # Get or generate report
+        report = await report_service.get_report_by_video_id(db, video_id)
+        if not report:
+            report = await report_service.generate_report(db, video_id)
+            if not report:
+                raise HTTPException(status_code=404, detail="Report not available")
+        
+        # Check if report has files
+        json_path = getattr(report, 'files', {}).get('json', '')
+        if not json_path:
+            raise HTTPException(status_code=404, detail="JSON report not found")
+        
+        # Read and return JSON file
+        if not os.path.exists(json_path):
+            raise HTTPException(status_code=404, detail="JSON file not found")
+        
+        with open(json_path, "r") as json_file:
+            json_content = json_file.read()
+        
+        return Response(
+            content=json_content,
+            media_type="application/json",
+            headers={
+                "Content-Disposition": f"attachment; filename=interview_analysis_report_{video_id}.json"
+            }
+        )
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"JSON report download failed: {e}")
+        raise HTTPException(status_code=500, detail="JSON report download failed")
 
 
 @router.post("/report/{video_id}/generate")

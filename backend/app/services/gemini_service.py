@@ -74,9 +74,11 @@ class GeminiAnalysisService:
         
         duration = context.get('duration', 0) if context else 0
         word_count = len(text.split()) if text else 0
+        sentences = text.count('.') + text.count('!') + text.count('?') if text else 0
+        avg_sentence_length = word_count / max(1, sentences)
         
         prompt = f"""
-You are an expert speech and communication analyst. Analyze the following interview speech transcript and provide a comprehensive assessment.
+You are an expert speech and communication analyst with 15+ years of experience in interview coaching and performance assessment. Analyze the following interview speech transcript and provide a comprehensive, precise assessment.
 
 TRANSCRIPT:
 "{text}"
@@ -84,73 +86,141 @@ TRANSCRIPT:
 CONTEXT:
 - Duration: {duration} seconds
 - Word count: {word_count}
-- Analysis type: Interview performance evaluation
+- Sentence count: {sentences}
+- Average sentence length: {avg_sentence_length:.1f} words
+- Analysis type: Professional interview performance evaluation
 
-Please provide a detailed analysis in the following JSON format:
+CRITICAL: Provide HIGHLY DETAILED and ACCURATE analysis in the following JSON format. Be precise with numbers and specific with feedback:
 
 {{
     "overall_assessment": {{
-        "confidence_score": <0-100>,
-        "clarity_score": <0-100>,
-        "professionalism_score": <0-100>,
-        "overall_score": <0-100>
+        "confidence_score": <0-100 with 0.1 precision>,
+        "clarity_score": <0-100 with 0.1 precision>,
+        "professionalism_score": <0-100 with 0.1 precision>,
+        "engagement_score": <0-100 with 0.1 precision>,
+        "authenticity_score": <0-100 with 0.1 precision>,
+        "persuasiveness_score": <0-100 with 0.1 precision>,
+        "overall_score": <weighted average with 0.1 precision>
     }},
     "speech_quality": {{
-        "pace": "slow/moderate/fast",
-        "articulation": "poor/average/good/excellent",
-        "fluency": "poor/average/good/excellent",
-        "coherence": "poor/average/good/excellent"
+        "pace": "very_slow/slow/moderate/fast/very_fast",
+        "pace_score": <0-100>,
+        "articulation": "poor/below_average/average/good/excellent",
+        "articulation_score": <0-100>,
+        "fluency": "poor/below_average/average/good/excellent",
+        "fluency_score": <0-100>,
+        "coherence": "poor/below_average/average/good/excellent",
+        "coherence_score": <0-100>,
+        "vocal_variety": "monotone/limited/moderate/good/excellent",
+        "vocal_variety_score": <0-100>
     }},
     "filler_words": {{
-        "total_count": <number>,
-        "frequency_per_minute": <number>,
+        "total_count": <exact number>,
+        "frequency_per_minute": <precise calculation>,
+        "frequency_per_100_words": <precise percentage>,
         "common_fillers": [
-            {{"word": "um", "count": <number>}},
-            {{"word": "uh", "count": <number>}},
-            {{"word": "like", "count": <number>}},
-            {{"word": "you know", "count": <number>}}
+            {{"word": "um", "count": <number>, "impact": "low/medium/high"}},
+            {{"word": "uh", "count": <number>, "impact": "low/medium/high"}},
+            {{"word": "like", "count": <number>, "impact": "low/medium/high"}},
+            {{"word": "you know", "count": <number>, "impact": "low/medium/high"}},
+            {{"word": "so", "count": <number>, "impact": "low/medium/high"}},
+            {{"word": "actually", "count": <number>, "impact": "low/medium/high"}}
         ],
-        "severity": "low/medium/high"
+        "severity": "very_low/low/medium/high/very_high",
+        "impact_on_professionalism": <0-100>,
+        "most_problematic_filler": "specific filler word"
     }},
     "content_analysis": {{
-        "structure": "poor/average/good/excellent",
-        "relevance": "poor/average/good/excellent",
-        "depth": "shallow/moderate/deep",
-        "examples_used": <number>,
-        "technical_terms": <number>
+        "structure": "poor/below_average/average/good/excellent",
+        "structure_score": <0-100>,
+        "relevance": "poor/below_average/average/good/excellent",
+        "relevance_score": <0-100>,
+        "depth": "very_shallow/shallow/moderate/deep/very_deep",
+        "depth_score": <0-100>,
+        "examples_used": <exact number>,
+        "technical_terms": <exact number>,
+        "storytelling_quality": <0-100>,
+        "logical_flow": <0-100>,
+        "completeness": <0-100>
+    }},
+    "language_analysis": {{
+        "vocabulary_sophistication": <0-100>,
+        "grammar_accuracy": <0-100>,
+        "sentence_variety": <0-100>,
+        "professional_terminology": <0-100>,
+        "repetitive_phrases": <number>,
+        "complex_sentences_ratio": <percentage>
     }},
     "communication_strengths": [
-        "List of positive aspects"
+        "Specific strength 1 with detailed explanation",
+        "Specific strength 2 with detailed explanation",
+        "Specific strength 3 with detailed explanation"
     ],
     "areas_for_improvement": [
-        "List of areas needing work"
+        "Specific area 1 with detailed explanation and impact",
+        "Specific area 2 with detailed explanation and impact",
+        "Specific area 3 with detailed explanation and impact"
     ],
     "recommendations": [
-        "Specific actionable recommendations"
+        "Specific actionable recommendation 1 with timeline",
+        "Specific actionable recommendation 2 with timeline",
+        "Specific actionable recommendation 3 with timeline"
     ],
     "confidence_indicators": {{
-        "positive_language": <percentage>,
-        "decisive_statements": <number>,
-        "hedge_words": <number>,
-        "uncertainty_phrases": <number>
+        "positive_language_percentage": <precise percentage>,
+        "decisive_statements": <exact count>,
+        "hedge_words": <exact count>,
+        "uncertainty_phrases": <exact count>,
+        "self_deprecating_comments": <exact count>,
+        "power_words_used": <exact count>,
+        "confidence_trend": "declining/stable/improving"
+    }},
+    "emotional_intelligence": {{
+        "self_awareness_score": <0-100>,
+        "empathy_indicators": <0-100>,
+        "emotional_regulation": <0-100>,
+        "social_skills_demonstration": <0-100>
     }},
     "interview_readiness": {{
-        "score": <0-100>,
-        "level": "beginner/intermediate/advanced/expert",
-        "key_gaps": ["list of gaps"]
+        "score": <0-100 with 0.1 precision>,
+        "level": "novice/beginner/intermediate/advanced/expert",
+        "key_gaps": ["specific gap 1", "specific gap 2", "specific gap 3"],
+        "ready_for_interview_level": "entry/mid/senior/executive",
+        "estimated_preparation_time": "X weeks/months"
     }},
-    "detailed_feedback": "Comprehensive paragraph explaining the analysis and providing specific feedback for improvement."
+    "behavioral_indicators": {{
+        "leadership_language": <0-100>,
+        "problem_solving_approach": <0-100>,
+        "collaboration_mentions": <exact count>,
+        "achievement_orientation": <0-100>,
+        "adaptability_indicators": <0-100>
+    }},
+    "speaking_patterns": {{
+        "average_words_per_sentence": <precise number>,
+        "longest_sentence_words": <exact count>,
+        "shortest_sentence_words": <exact count>,
+        "question_usage": <exact count>,
+        "transition_quality": <0-100>,
+        "pause_usage": "poor/average/good/excellent"
+    }},
+    "detailed_feedback": "Comprehensive 200+ word analysis explaining the assessment in detail, providing specific examples from the transcript, and offering actionable improvement strategies with expected outcomes and timelines.",
+    "industry_specific_notes": "Feedback tailored to the specific industry or role type mentioned in the content, if applicable.",
+    "comparison_to_benchmarks": "How this performance compares to typical interview standards for similar roles."
 }}
 
-Focus on:
-1. Speech confidence and authority
-2. Clarity and articulation
-3. Use of filler words and their impact
-4. Professional communication style
-5. Content structure and organization
-6. Interview readiness and performance
+IMPORTANT ANALYSIS REQUIREMENTS:
+1. Count filler words PRECISELY by examining the exact transcript
+2. Analyze speech confidence through specific language patterns
+3. Evaluate clarity based on sentence structure and vocabulary
+4. Assess professionalism through appropriate terminology and tone
+5. Rate content structure and organization systematically
+6. Provide interview readiness assessment with specific benchmarks
+7. Give ACTIONABLE recommendations with clear implementation steps
+8. Be specific about timing and frequency of issues
+9. Identify patterns and trends in communication style
+10. Consider industry standards and expectations
 
-Provide specific, actionable feedback that would help in interview preparation.
+Provide precise, evidence-based analysis with specific examples from the transcript.
 """
         return prompt
     
