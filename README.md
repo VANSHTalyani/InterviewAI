@@ -51,7 +51,7 @@ InterviewAI is a comprehensive platform that uses artificial intelligence to hel
 
 1. **Clone the repository**
    ```bash
-   git clone <[https://github.com/VANSHTalyani/InterviewAI/](https://github.com/VANSHTalyani/InterviewAI/)>
+   git clone git clone https://github.com/VANSHTalyani/InterviewAI.git
    cd InterviewAI/backend
    ```
 
