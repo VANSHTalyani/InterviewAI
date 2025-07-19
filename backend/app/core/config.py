@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     GOOGLE_APPLICATION_CREDENTIALS: Optional[str] = None
     ASSEMBLYAI_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
+    DEEPGRAM_API_KEY: Optional[str] = None
     
     # Video Processing Configuration
     FFMPEG_PATH: str = "/usr/bin/ffmpeg"

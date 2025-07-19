@@ -14,6 +14,10 @@ from app.core.logging import logger
 from app.models.schemas import VideoCreate, VideoResponse, VideoStatusEnum
 from app.services.storage import storage_service
 
+# Set ffmpeg and ffprobe paths for ffmpeg-python
+ffmpeg._run.FFMPEG_BINARY = settings.FFMPEG_PATH
+ffmpeg._run.FFPROBE_BINARY = settings.FFMPEG_PATH.replace('ffmpeg', 'ffprobe')
+
 
 class VideoProcessor:
     """

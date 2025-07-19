@@ -9,7 +9,7 @@ import time
 
 from app.core.config import settings
 from app.core.logging import logger
-from app.api.routes import health, upload, process
+from app.api.routes import health, upload, process, comprehensive_analysis
 
 
 @asynccontextmanager
@@ -71,6 +71,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(health.router, prefix="/health", tags=["health"])
 app.include_router(upload.router, prefix="/api/v1", tags=["upload"])
 app.include_router(process.router, prefix="/api/v1", tags=["process"])
+app.include_router(comprehensive_analysis.router, prefix="/api/v1/comprehensive", tags=["comprehensive-analysis"])
 
 
 @app.get("/")

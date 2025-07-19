@@ -28,6 +28,12 @@ try:
 except ImportError:
     OPENAI_AVAILABLE = False
 
+try:
+    from deepgram import DeepgramClient, PrerecordedOptions
+    DEEPGRAM_AVAILABLE = True
+except ImportError:
+    DEEPGRAM_AVAILABLE = False
+
 
 class TranscriptionService:
     """
@@ -38,30 +44,44 @@ class TranscriptionService:
         self.assemblyai_client = None
         self.google_client = None
         self.openai_client = None
+        self.deepgram_client = None
         self.initialize_clients()
     
     def initialize_clients(self):
         """Initialize transcription service clients"""
+        # AssemblyAI client
         try:
-            # AssemblyAI client
-            if ASSEMBLYAI_AVAILABLE and settings.ASSEMBLYAI_API_KEY:
+            if ASSEMBLYAI_AVAILABLE and settings.ASSEMBLYAI_API_KEY and settings.ASSEMBLYAI_API_KEY.strip():
                 aai.settings.api_key = settings.ASSEMBLYAI_API_KEY
                 self.assemblyai_client = aai
                 logger.info("AssemblyAI client initialized")
-            
-            # Google Speech client
+        except Exception as e:
+            logger.warning(f"Failed to initialize AssemblyAI client: {e}")
+        
+        # Google Speech client
+        try:
             if GOOGLE_SPEECH_AVAILABLE and settings.GOOGLE_APPLICATION_CREDENTIALS:
                 self.google_client = speech.SpeechClient()
                 logger.info("Google Speech client initialized")
-            
-            # OpenAI client
-            if OPENAI_AVAILABLE and settings.OPENAI_API_KEY:
+        except Exception as e:
+            logger.warning(f"Failed to initialize Google Speech client: {e}")
+        
+        # OpenAI client
+        try:
+            if OPENAI_AVAILABLE and settings.OPENAI_API_KEY and settings.OPENAI_API_KEY.strip():
                 self.openai_client = openai
                 self.openai_client.api_key = settings.OPENAI_API_KEY
                 logger.info("OpenAI client initialized")
-                
         except Exception as e:
-            logger.error(f"Failed to initialize transcription clients: {e}")
+            logger.warning(f"Failed to initialize OpenAI client: {e}")
+        
+        # Deepgram client
+        try:
+            if DEEPGRAM_AVAILABLE and settings.DEEPGRAM_API_KEY and settings.DEEPGRAM_API_KEY.strip():
+                self.deepgram_client = DeepgramClient(settings.DEEPGRAM_API_KEY)
+                logger.info("Deepgram client initialized")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Deepgram client: {e}")
     
     async def transcribe_audio(self, audio_path: str) -> Dict[str, Any]:
         """
@@ -73,26 +93,45 @@ class TranscriptionService:
         Returns:
             Dictionary containing transcription results
         """
-        try:
-            # Try AssemblyAI first
-            if self.assemblyai_client and settings.ENABLE_TRANSCRIPTION:
-                return await self._transcribe_with_assemblyai(audio_path)
-            
-            # Try Google Speech
-            elif self.google_client and settings.ENABLE_TRANSCRIPTION:
-                return await self._transcribe_with_google(audio_path)
-            
-            # Try OpenAI Whisper
-            elif self.openai_client and settings.ENABLE_TRANSCRIPTION:
-                return await self._transcribe_with_openai(audio_path)
-            
-            else:
-                # Fallback to mock transcription
-                return await self._mock_transcription(audio_path)
-                
-        except Exception as e:
-            logger.error(f"Transcription failed: {e}")
-            raise
+        logger.info(f"Starting transcription for: {audio_path}")
+        
+        # List of transcription services to try in order
+        services = []
+        
+        # Check if API keys are valid (not placeholder values)
+        if (self.deepgram_client and settings.ENABLE_TRANSCRIPTION and 
+            settings.DEEPGRAM_API_KEY and not settings.DEEPGRAM_API_KEY.startswith('your-') and 
+            settings.DEEPGRAM_API_KEY != 'your-deepgram-api-key'):
+            services.append((self._transcribe_with_deepgram, 'Deepgram'))
+        
+        if (self.assemblyai_client and settings.ENABLE_TRANSCRIPTION and 
+            settings.ASSEMBLYAI_API_KEY and not settings.ASSEMBLYAI_API_KEY.startswith('your-') and 
+            settings.ASSEMBLYAI_API_KEY != 'your-assemblyai-api-key'):
+            services.append((self._transcribe_with_assemblyai, 'AssemblyAI'))
+        
+        if (self.google_client and settings.ENABLE_TRANSCRIPTION and 
+            settings.GOOGLE_APPLICATION_CREDENTIALS and not settings.GOOGLE_APPLICATION_CREDENTIALS.startswith('your-')):
+            services.append((self._transcribe_with_google, 'Google Speech'))
+        
+        if (self.openai_client and settings.ENABLE_TRANSCRIPTION and 
+            settings.OPENAI_API_KEY and not settings.OPENAI_API_KEY.startswith('your-') and 
+            settings.OPENAI_API_KEY != 'your-openai-api-key'):
+            services.append((self._transcribe_with_openai, 'OpenAI Whisper'))
+        
+        # Try each service in order
+        for service_func, service_name in services:
+            try:
+                logger.info(f"Trying transcription with {service_name}")
+                result = await service_func(audio_path)
+                logger.info(f"Successfully transcribed with {service_name}")
+                return result
+            except Exception as e:
+                logger.warning(f"{service_name} transcription failed: {e}")
+                continue
+        
+        # If all services fail, use mock transcription
+        logger.info("All transcription services failed, using mock transcription")
+        return await self._mock_transcription(audio_path)
     
     async def _transcribe_with_assemblyai(self, audio_path: str) -> Dict[str, Any]:
         """
@@ -110,7 +149,6 @@ class TranscriptionService:
             # Configure transcription settings
             config = aai.TranscriptionConfig(
                 speaker_labels=True,
-                auto_punctuation=True,
                 format_text=True,
                 word_boost=["presentation", "analysis", "feedback"],
                 filter_profanity=True
@@ -148,6 +186,170 @@ class TranscriptionService:
             
         except Exception as e:
             logger.error(f"AssemblyAI transcription failed: {e}")
+            raise
+    
+    async def _transcribe_with_deepgram(self, audio_path: str) -> Dict[str, Any]:
+        """
+        Transcribe audio using Deepgram
+        
+        Args:
+            audio_path: Path to the audio file
+            
+        Returns:
+            Transcription results
+        """
+        try:
+            logger.info(f"Starting Deepgram transcription for {audio_path}")
+            
+            # Configure transcription options
+            options = PrerecordedOptions(
+                model="nova-2",
+                smart_format=True,
+                punctuate=True,
+                diarize=True,
+                filler_words=True,
+                numerals=True,
+                profanity_filter=True,
+                redact=["pci", "numbers"],
+                search=["interview", "presentation", "analysis"],
+                summarize="v2",
+                topics=True,
+                language="en-US",
+            )
+            
+            # Read audio file
+            async with aiofiles.open(audio_path, 'rb') as audio_file:
+                audio_content = await audio_file.read()
+            
+            # Perform transcription
+            response = await self.deepgram_client.listen.asyncprerecorded.v("1").transcribe_file(
+                {"buffer": audio_content},
+                options
+            )
+            
+            # Extract results - handle different response formats
+            if hasattr(response, 'results'):
+                results = response.results
+            else:
+                results = response.get("results", {}) if hasattr(response, 'get') else {}
+            
+            if hasattr(results, 'channels'):
+                channels = results.channels
+            else:
+                channels = results.get("channels", []) if hasattr(results, 'get') else []
+            
+            if not channels:
+                raise Exception("No transcription channels found")
+            
+            channel = channels[0]
+            
+            # Handle both dict and object formats for alternatives
+            if hasattr(channel, 'alternatives'):
+                alternatives = channel.alternatives
+            else:
+                alternatives = channel.get("alternatives", []) if hasattr(channel, 'get') else []
+            
+            if not alternatives:
+                raise Exception("No transcription alternatives found")
+            
+            alternative = alternatives[0]
+            
+            # Handle both dict and object formats for transcript
+            if hasattr(alternative, 'transcript'):
+                full_text = alternative.transcript
+            else:
+                full_text = alternative.get("transcript", "") if hasattr(alternative, 'get') else ""
+            
+            # Extract segments with timestamps
+            segments = []
+            if hasattr(alternative, 'words'):
+                words = alternative.words
+            else:
+                words = alternative.get("words", []) if hasattr(alternative, 'get') else []
+            
+            if words:
+                # Helper function to get word attributes
+                def get_word_attr(word_obj, attr, default=None):
+                    if hasattr(word_obj, attr):
+                        return getattr(word_obj, attr)
+                    elif hasattr(word_obj, 'get'):
+                        return word_obj.get(attr, default)
+                    else:
+                        return default
+                
+                current_segment = {
+                    'start_time': get_word_attr(words[0], 'start', 0),
+                    'end_time': get_word_attr(words[0], 'end', 0),
+                    'text': '',
+                    'confidence': 0,
+                    'speaker': get_word_attr(words[0], 'speaker', 0)
+                }
+                
+                segment_words = []
+                for word in words:
+                    word_speaker = get_word_attr(word, 'speaker', 0)
+                    
+                    # If speaker changes, create new segment
+                    if word_speaker != current_segment['speaker'] and segment_words:
+                        current_segment['text'] = ' '.join([w['word'] for w in segment_words])
+                        current_segment['confidence'] = sum([w['confidence'] for w in segment_words]) / len(segment_words)
+                        segments.append(current_segment)
+                        
+                        # Start new segment
+                        current_segment = {
+                            'start_time': get_word_attr(word, 'start', 0),
+                            'end_time': get_word_attr(word, 'end', 0),
+                            'text': '',
+                            'confidence': 0,
+                            'speaker': word_speaker
+                        }
+                        segment_words = []
+                    
+                    current_segment['end_time'] = get_word_attr(word, 'end', 0)
+                    segment_words.append({
+                        'word': get_word_attr(word, 'word', ''),
+                        'confidence': get_word_attr(word, 'confidence', 0.0)
+                    })
+                
+                # Add final segment
+                if segment_words:
+                    current_segment['text'] = ' '.join([w['word'] for w in segment_words])
+                    current_segment['confidence'] = sum([w['confidence'] for w in segment_words]) / len(segment_words)
+                    segments.append(current_segment)
+            
+            # Calculate overall confidence
+            overall_confidence = sum([s['confidence'] for s in segments]) / len(segments) if segments else 0
+            
+            # Get summary and topics if available
+            if hasattr(results, 'summary'):
+                summary = results.summary
+            else:
+                summary = results.get("summary", {}) if hasattr(results, 'get') else {}
+                
+            if hasattr(results, 'topics'):
+                topics = results.topics
+            else:
+                topics = results.get("topics", {}) if hasattr(results, 'get') else {}
+            
+            return {
+                'text': full_text,
+                'segments': segments,
+                'confidence': overall_confidence,
+                'language': 'en',
+                'service': 'deepgram',
+                'word_count': len(full_text.split()) if full_text else 0,
+                'duration': max([s['end_time'] for s in segments]) if segments else 0,
+                'summary': getattr(summary, 'short', '') if summary else '',
+                'topics': getattr(topics, 'segments', []) if topics else [],
+                'metadata': {
+                    'model': 'nova-2',
+                    'processing_time': getattr(getattr(response, 'metadata', None), 'duration', 0) if hasattr(response, 'metadata') else 0,
+                    'confidence_threshold': 0.8
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"Deepgram transcription failed: {e}")
             raise
     
     async def _transcribe_with_google(self, audio_path: str) -> Dict[str, Any]:
