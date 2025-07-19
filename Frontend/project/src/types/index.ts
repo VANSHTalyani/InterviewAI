@@ -109,6 +109,25 @@ export interface BackendAnalysisResult {
       score: number;
     };
   };
+  detailed_filler_analysis?: {
+    total_count: number;
+    by_type: Record<string, {
+      count: number;
+      positions: Array<{
+        char_position: number;
+        word_position: number;
+        timestamp: number;
+      }>;
+    }>;
+    frequency_per_100_words: number;
+    frequency_per_minute: number;
+    severity: string;
+    detailed_occurrences: Array<{
+      word: string;
+      timestamp: number;
+      confidence: number;
+    }>;
+  };
   quick_insights: {
     overall_score: number;
     confidence_level: number;
@@ -132,6 +151,18 @@ export interface BackendAnalysisResult {
     report_id: string;
     pdf_path?: string;
     json_path?: string;
+  };
+  display_summary?: {
+    title: string;
+    completion_status: string;
+    description: string;
+    overall_grade: string;
+    key_metrics: {
+      speaking_confidence: string;
+      speech_clarity: string;
+      filler_usage: string;
+      readiness: string;
+    };
   };
 }
 

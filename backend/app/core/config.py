@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     SENTRY_DSN: Optional[str] = None
     
     # CORS Configuration
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8080", "http://localhost:5173"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8080", "http://localhost:3173"]
     
     @field_validator("UPLOAD_DIR")
     @classmethod

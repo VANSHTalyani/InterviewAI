@@ -16,6 +16,34 @@ from app.services.video_processor import video_processor
 router = APIRouter()
 
 
+def _calculate_grade(score: float) -> str:
+    """
+    Calculate letter grade from numerical score (0-100)
+    """
+    if score >= 90:
+        return 'A+'
+    elif score >= 85:
+        return 'A'
+    elif score >= 80:
+        return 'A-'
+    elif score >= 75:
+        return 'B+'
+    elif score >= 70:
+        return 'B'
+    elif score >= 65:
+        return 'B-'
+    elif score >= 60:
+        return 'C+'
+    elif score >= 55:
+        return 'C'
+    elif score >= 50:
+        return 'C-'
+    elif score >= 40:
+        return 'D'
+    else:
+        return 'F'
+
+
 @router.post("/analyze-speech")
 async def comprehensive_speech_analysis(
     filename: str,
@@ -69,6 +97,13 @@ async def comprehensive_speech_analysis(
             context
         )
         
+        # Step 3.1: Get detailed filler words analysis with timestamps
+        logger.info("Getting detailed filler words analysis")
+        detailed_filler_analysis = await gemini_service.analyze_filler_words(
+            transcription_data['text'],
+            transcription_data.get('duration', 0)
+        )
+        
         # Step 4: Get video metadata
         video_metadata = await video_processor._get_video_metadata(file_path)
         
@@ -85,12 +120,14 @@ async def comprehensive_speech_analysis(
                 user_info=user_info
             )
         
-        # Step 6: Compile response
+        # Step 6: Compile response - Enhanced for frontend display
         response = {
             'success': True,
             'filename': filename,
             'user_id': user_id,
             'analysis_timestamp': datetime.now().isoformat(),
+            'message': 'Analysis completed successfully',
+            'status': 'completed',
             'transcription': {
                 'service': transcription_data.get('service', 'unknown'),
                 'text': transcription_data['text'],
@@ -101,12 +138,14 @@ async def comprehensive_speech_analysis(
                 'metadata': transcription_data.get('metadata', {})
             },
             'ai_analysis': analysis_results,
+            'detailed_filler_analysis': detailed_filler_analysis,  # Enhanced filler word data
             'quick_insights': {
                 'overall_score': analysis_results.get('overall_assessment', {}).get('overall_score', 0),
                 'confidence_level': analysis_results.get('overall_assessment', {}).get('confidence_score', 0),
                 'clarity_score': analysis_results.get('overall_assessment', {}).get('clarity_score', 0),
-                'filler_word_count': analysis_results.get('filler_words', {}).get('total_count', 0),
-                'speaking_rate': transcription_data.get('word_count', 0) / (transcription_data.get('duration', 60) / 60),
+                'filler_word_count': detailed_filler_analysis.get('total_count', 0),
+                'filler_frequency_per_minute': detailed_filler_analysis.get('frequency_per_minute', 0),
+                'speaking_rate': transcription_data.get('word_count', 0) / (transcription_data.get('duration', 60) / 60) if transcription_data.get('duration', 0) > 0 else 0,
                 'readiness_level': analysis_results.get('interview_readiness', {}).get('level', 'intermediate')
             },
             'recommendations': {
@@ -115,7 +154,20 @@ async def comprehensive_speech_analysis(
                 'immediate_actions': analysis_results.get('recommendations', [])[:3]
             },
             'video_metadata': video_metadata,
-            'report_info': report_info
+            'report_info': report_info,
+            # Enhanced frontend display data
+            'display_summary': {
+                'title': f'Analysis Results for {filename}',
+                'completion_status': 'Analysis Complete!',
+                'description': 'Your interview has been analyzed. Here\'s your detailed feedback.',
+                'overall_grade': _calculate_grade(analysis_results.get('overall_assessment', {}).get('overall_score', 0)),
+                'key_metrics': {
+                    'speaking_confidence': f"{analysis_results.get('overall_assessment', {}).get('confidence_score', 0):.0f}%",
+                    'speech_clarity': f"{analysis_results.get('overall_assessment', {}).get('clarity_score', 0):.0f}%",
+                    'filler_usage': f"{analysis_results.get('filler_words', {}).get('severity', 'low').title()}",
+                    'readiness': analysis_results.get('interview_readiness', {}).get('level', 'intermediate').title()
+                }
+            }
         }
         
         logger.info(f"Comprehensive analysis completed for {filename}")

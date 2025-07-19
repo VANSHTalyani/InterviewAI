@@ -29,7 +29,7 @@ except ImportError:
     OPENAI_AVAILABLE = False
 
 try:
-    from deepgram import DeepgramClient, PrerecordedOptions
+    from deepgram import DeepgramClient, PrerecordedOptions, FileSource
     DEEPGRAM_AVAILABLE = True
 except ImportError:
     DEEPGRAM_AVAILABLE = False
@@ -60,7 +60,8 @@ class TranscriptionService:
         
         # Google Speech client
         try:
-            if GOOGLE_SPEECH_AVAILABLE and settings.GOOGLE_APPLICATION_CREDENTIALS:
+            if (GOOGLE_SPEECH_AVAILABLE and settings.GOOGLE_APPLICATION_CREDENTIALS and 
+                os.path.exists(settings.GOOGLE_APPLICATION_CREDENTIALS)):
                 self.google_client = speech.SpeechClient()
                 logger.info("Google Speech client initialized")
         except Exception as e:
@@ -222,10 +223,20 @@ class TranscriptionService:
             async with aiofiles.open(audio_path, 'rb') as audio_file:
                 audio_content = await audio_file.read()
             
-            # Perform transcription
-            response = await self.deepgram_client.listen.asyncprerecorded.v("1").transcribe_file(
-                {"buffer": audio_content},
-                options
+            # Create file source
+            payload: FileSource = {
+                "buffer": audio_content,
+            }
+            
+            # Perform transcription (Deepgram v4 is synchronous)
+            import asyncio
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: self.deepgram_client.listen.rest.v("1").transcribe_file(
+                    payload,
+                    options
+                )
             )
             
             # Extract results - handle different response formats

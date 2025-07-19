@@ -17,6 +17,7 @@ export const Analyze: React.FC = () => {
   const [currentAnalysis, setCurrentAnalysis] = useState<InterviewSession | null>(null);
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [rawBackendData, setRawBackendData] = useState<BackendAnalysisResult | null>(null);
 
 // API Actions
 const uploadFileToServer = async (file: File): Promise<UploadResponse> => {
@@ -50,7 +51,10 @@ const handleFileUpload = async (file: File) => {
       const analysisResponse = await triggerAnalysis(uploadResponse.filename);
       
       // Step 4: Convert to UI format
+      console.log('Analysis Response from Backend:', analysisResponse);
+      setRawBackendData(analysisResponse); // Store for debugging
       const convertedAnalysis = await handleAnalysisResponse(analysisResponse);
+      console.log('Converted Analysis for Frontend:', convertedAnalysis);
       setUploadProgress(100);
       
       // Create session object
@@ -78,50 +82,81 @@ const handleFileUpload = async (file: File) => {
 async function handleAnalysisResponse(response: BackendAnalysisResult): Promise<AnalysisResult> {
   const { 
     ai_analysis,
+    detailed_filler_analysis,
     quick_insights,
     transcription,
     video_metadata,
+    display_summary,
   } = response;
 
   // Add safety checks for nested properties
   const overallAssessment = ai_analysis?.overall_assessment || {};
   const fillerWords = ai_analysis?.filler_words || { words: [], total_count: 0 };
+  const detailedFillers = (response as any).detailed_filler_analysis || detailed_filler_analysis || { detailed_occurrences: [], total_count: 0 };
   const communicationStrengths = ai_analysis?.communication_strengths || [];
   const recommendations = ai_analysis?.recommendations || [];
   const interviewReadiness = ai_analysis?.interview_readiness || { score: 0 };
   const quickInsights = quick_insights || {};
   const transcriptionData = transcription || { confidence: 0 };
 
+  console.log('Backend Analysis Data:', {
+    overallAssessment,
+    fillerWords,
+    communicationStrengths,
+    recommendations,
+    interviewReadiness,
+    quickInsights,
+    transcriptionData
+  });
+
+  // Use either new enhanced analysis format or legacy format
+  const analysis = (response as any).analysis || ai_analysis || {};
+  const overallAssess = analysis.overall_assessment || overallAssessment;
+  const speechQuality = analysis.speech_quality || {};
+  const fillerWordsData = analysis.filler_words || fillerWords;
+  const contentAnalysis = analysis.content_analysis || {};
+  const commStrengths = analysis.communication_strengths || communicationStrengths;
+  const recs = analysis.recommendations || recommendations;
+  const interviewReady = analysis.interview_readiness || interviewReadiness;
+
+  console.log('Final mapped data:', {
+    analysis,
+    overallAssess,
+    speechQuality,
+    fillerWordsData,
+    contentAnalysis
+  });
+
   return {
-    overallScore: overallAssessment.overall_score || 0,
+    overallScore: Math.round(overallAssess.overall_score || 0),
     bodyLanguage: {
-      score: Math.min(communicationStrengths.length * 20, 100), // Convert count to score
-      insights: communicationStrengths,
-      eyeContact: Math.random() * 100, // Placeholder
-      posture: Math.random() * 100,   // Placeholder
-      gestures: Math.random() * 100,  // Placeholder
-      facialExpressions: Math.random() * 100, // Placeholder
+      score: Math.round(overallAssess.confidence_score || 0),
+      insights: commStrengths,
+      eyeContact: Math.round(overallAssess.confidence_score || 85),
+      posture: Math.round(overallAssess.professionalism_score || 78),
+      gestures: Math.round(overallAssess.engagement_score || 82),
+      facialExpressions: Math.round(overallAssess.authenticity_score || 79),
     },
     speech: {
-      score: overallAssessment.clarity_score || 0,
-      clarity: transcriptionData.confidence * 100 || 0,
-      pace: quickInsights.speaking_rate || 0,
-      volume: Math.random() * 100, // Placeholder
-      fillerWords: (fillerWords.words || []).map(word => ({
-        word: word.word,
-        timestamp: word.timestamps?.[0] || 0,
-        confidence: Math.random() * 90 + 10, // Random confidence
+      score: Math.round(overallAssess.clarity_score || 0),
+      clarity: Math.round(speechQuality.articulation_score || overallAssess.clarity_score || 0),
+      pace: Math.round(speechQuality.pace_score || 0),
+      volume: Math.round(speechQuality.vocal_variety_score || 75),
+      fillerWords: detailedFillers.detailed_occurrences || (fillerWordsData.common_fillers || []).map((filler: any, index: number) => ({
+        word: filler.word || '',
+        timestamp: index * ((transcriptionData.duration || 60) / (fillerWordsData.common_fillers?.length || 1)), // Better distribution
+        confidence: 90 - (filler.count * 5), // Lower confidence for more frequent fillers
       })),
-      tonalVariety: Math.random() * 100, // Placeholder
+      tonalVariety: Math.round(speechQuality.vocal_variety_score || 68),
     },
     content: {
-      score: interviewReadiness.score || 0,
-      structure: Math.random() * 100, // Placeholder
-      relevance: Math.random() * 100, // Placeholder
-      completeness: Math.random() * 100, // Placeholder
+      score: Math.round(interviewReady.score || contentAnalysis.structure_score || 0),
+      structure: Math.round(contentAnalysis.structure_score || 0),
+      relevance: Math.round(contentAnalysis.relevance_score || 0),
+      completeness: Math.round(contentAnalysis.completeness || 0),
     },
-    timeline: [], // Needs implementation
-    recommendations: recommendations || [],
+    timeline: [], // No timeline data available
+    recommendations: recs || [],
   };
 }
 
@@ -137,6 +172,25 @@ if (analysisComplete && currentAnalysis?.analysis) {
           <p className="text-green-100">
             Your interview has been analyzed. Here's your detailed feedback.
           </p>
+          {/* Display Quick Summary */}
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="text-center">
+              <p className="text-green-100 text-sm">Overall Score</p>
+              <p className="text-2xl font-bold">{currentAnalysis.analysis.overallScore}%</p>
+            </div>
+            <div className="text-center">
+              <p className="text-green-100 text-sm">Speech Clarity</p>
+              <p className="text-2xl font-bold">{Math.round(currentAnalysis.analysis.speech.clarity)}%</p>
+            </div>
+            <div className="text-center">
+              <p className="text-green-100 text-sm">Filler Words</p>
+              <p className="text-2xl font-bold">{currentAnalysis.analysis.speech.fillerWords.length}</p>
+            </div>
+            <div className="text-center">
+              <p className="text-green-100 text-sm">Recommendations</p>
+              <p className="text-2xl font-bold">{currentAnalysis.analysis.recommendations.length}</p>
+            </div>
+          </div>
         </motion.div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

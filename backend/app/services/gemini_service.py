@@ -182,9 +182,21 @@ CRITICAL: Analyze ONLY this exact transcript. Count filler words by searching th
         "Specific area 3 with detailed explanation and impact"
     ],
     "recommendations": [
-        "Specific actionable recommendation 1 with timeline",
-        "Specific actionable recommendation 2 with timeline",
-        "Specific actionable recommendation 3 with timeline"
+        "Immediate Action: Specific 1-week actionable step with measurable outcome",
+        "Short-term Goal: 2-4 week improvement strategy with practice methods",
+        "Long-term Development: 1-3 month skill-building plan with resources",
+        "Interview-Specific Tip: Tactical advice for next interview",
+        "Communication Enhancement: Specific technique to improve delivery"
+    ],
+    "practice_exercises": [
+        "Daily 5-minute exercise to address main weakness",
+        "Weekly mock interview focus area",
+        "Specific phrases to practice and incorporate"
+    ],
+    "interview_preparation_tips": [
+        "Question types to prepare for based on communication style",
+        "Specific stories/examples to develop",
+        "Body language adjustments for next interview"
     ],
     "confidence_indicators": {{
         "positive_language_percentage": <precise percentage>,
@@ -281,7 +293,7 @@ Provide precise, evidence-based analysis with specific examples from the transcr
                 analysis = self._validate_analysis_structure(analysis, original_text)
                 
                 # Cross-validate against actual text to prevent hallucination
-                analysis = self._cross_validate_against_text(analysis, original_text)
+                analysis = await self._cross_validate_against_text(analysis, original_text, context)
                 
                 return analysis
             else:
@@ -351,11 +363,12 @@ Provide precise, evidence-based analysis with specific examples from the transcr
         
         return analysis
     
-    def _cross_validate_against_text(self, analysis: Dict[str, Any], original_text: str) -> Dict[str, Any]:
+    async def _cross_validate_against_text(self, analysis: Dict[str, Any], original_text: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """Cross-validate Gemini analysis against actual text to prevent hallucination"""
         try:
             # Get actual filler word count from our precise method
-            actual_filler_analysis = asyncio.run(self.analyze_filler_words(original_text))
+            duration = context.get('duration', 0) if context else 0
+            actual_filler_analysis = await self.analyze_filler_words(original_text, duration)
             actual_count = actual_filler_analysis['total_count']
             
             # Check if Gemini reported filler words when there are none
@@ -391,7 +404,7 @@ Provide precise, evidence-based analysis with specific examples from the transcr
             
             # Validate confidence indicators against actual text analysis
             if 'confidence_indicators' in analysis:
-                actual_confidence = asyncio.run(self.analyze_speech_confidence(original_text))
+                actual_confidence = await self.analyze_speech_confidence(original_text)
                 
                 # Check for major discrepancies in confidence analysis
                 gemini_confident = analysis['confidence_indicators'].get('decisive_statements', 0)
@@ -424,15 +437,16 @@ Provide precise, evidence-based analysis with specific examples from the transcr
             count += text_lower.count(filler)
         return count
     
-    async def analyze_filler_words(self, text: str) -> Dict[str, Any]:
+    async def analyze_filler_words(self, text: str, duration: float = None) -> Dict[str, Any]:
         """
         Detailed filler word analysis
         
         Args:
             text: Text to analyze for filler words
+            duration: Duration of the speech in seconds (optional)
             
         Returns:
-            Detailed filler word analysis
+            Detailed filler word analysis with timestamps
         """
         try:
             # Common filler words and phrases
@@ -454,31 +468,70 @@ Provide precise, evidence-based analysis with specific examples from the transcr
             }
             
             text_lower = text.lower()
+            words = text.split()
+            word_count = len(words)
+            
             filler_analysis = {
                 'total_count': 0,
                 'by_type': {},
                 'positions': [],
                 'frequency_per_100_words': 0,
-                'severity': 'low'
+                'frequency_per_minute': 0,
+                'severity': 'low',
+                'detailed_occurrences': []  # For frontend visualization
             }
             
-            word_count = len(text.split())
+            all_fillers = []
             
             for filler, pattern in filler_patterns.items():
                 matches = list(re.finditer(pattern, text_lower))
                 count = len(matches)
                 
                 if count > 0:
+                    positions = []
+                    for match in matches:
+                        # Calculate approximate timestamp based on word position
+                        char_position = match.start()
+                        text_before = text[:char_position]
+                        words_before = len(text_before.split())
+                        
+                        # Estimate timestamp (distribute evenly across duration)
+                        if duration and duration > 0:
+                            estimated_timestamp = (words_before / word_count) * duration
+                        else:
+                            estimated_timestamp = words_before * 0.5  # Assume 0.5 seconds per word
+                        
+                        positions.append({
+                            'char_position': char_position,
+                            'word_position': words_before,
+                            'timestamp': round(estimated_timestamp, 2)
+                        })
+                        
+                        # Add to detailed occurrences for frontend
+                        all_fillers.append({
+                            'word': filler,
+                            'timestamp': round(estimated_timestamp, 2),
+                            'confidence': 0.9  # High confidence for exact text matches
+                        })
+                    
                     filler_analysis['by_type'][filler] = {
                         'count': count,
-                        'positions': [match.start() for match in matches]
+                        'positions': positions
                     }
                     filler_analysis['total_count'] += count
+            
+            # Sort fillers by timestamp
+            filler_analysis['detailed_occurrences'] = sorted(all_fillers, key=lambda x: x['timestamp'])
             
             # Calculate frequency
             if word_count > 0:
                 filler_analysis['frequency_per_100_words'] = round(
                     (filler_analysis['total_count'] / word_count) * 100, 2
+                )
+            
+            if duration and duration > 0:
+                filler_analysis['frequency_per_minute'] = round(
+                    (filler_analysis['total_count'] / (duration / 60)), 2
                 )
             
             # Determine severity
@@ -498,7 +551,9 @@ Provide precise, evidence-based analysis with specific examples from the transcr
                 'by_type': {},
                 'positions': [],
                 'frequency_per_100_words': 0,
+                'frequency_per_minute': 0,
                 'severity': 'low',
+                'detailed_occurrences': [],
                 'error': str(e)
             }
     
@@ -617,9 +672,21 @@ Provide precise, evidence-based analysis with specific examples from the transcr
                 "Add more specific examples"
             ],
             "recommendations": [
-                "Practice speaking with deliberate pauses instead of filler words",
-                "Record yourself speaking to identify patterns",
-                "Prepare specific examples to illustrate your points"
+                "Immediate Action: Practice the 'Rule of 3' - pause for 3 seconds before answering. This week, record yourself answering 5 common interview questions daily and count pauses vs. filler words. Target: 80% pauses, 20% fillers.",
+                "Short-term Goal: Develop 3 compelling STAR stories (Situation, Task, Action, Result) that showcase your key skills. Practice telling each in under 2 minutes with natural transitions. Complete by end of next week.",
+                "Long-term Development: Join Toastmasters or similar speaking group within 30 days. Attend weekly for 3 months to build speaking confidence and receive structured feedback from experienced speakers.",
+                "Interview-Specific Tip: Before each interview question, repeat the question back to the interviewer to buy thinking time and ensure clarity. Practice this technique: 'So you're asking about my experience with [topic]?'",
+                "Communication Enhancement: Replace filler words with purposeful phrases: 'That's an excellent question' or 'Let me think about the best example' - gives you time while maintaining professionalism."
+            ],
+            "practice_exercises": [
+                "Daily 5-minute mirror practice: Answer one behavioral question per day focusing on eliminating 'um' and 'uh' completely",
+                "Weekly mock interviews: Have someone ask you unexpected questions while you practice the 3-second pause rule",
+                "Power phrase practice: Memorize 5 confident transition phrases like 'In my experience...', 'What I've found most effective...', 'My approach to this is...' and use them naturally"
+            ],
+            "interview_preparation_tips": [
+                "Prepare for behavioral questions using the STAR method - your communication style suggests you need stronger structure in your responses",
+                "Develop 3 specific failure/challenge stories that show growth and learning - practice telling these with confidence",
+                "Practice power posture before interviews: stand tall, shoulders back, and speak from your diaphragm to project more confidence"
             ],
             "confidence_indicators": {
                 "positive_language": 65,
