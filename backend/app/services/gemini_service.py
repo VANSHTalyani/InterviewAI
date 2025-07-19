@@ -28,16 +28,29 @@ class GeminiAnalysisService:
         self.initialize_client()
     
     def initialize_client(self):
-        """Initialize Gemini client"""
+        """Initialize Gemini client with Pro model"""
         try:
             if GEMINI_AVAILABLE and settings.GEMINI_API_KEY:
                 genai.configure(api_key=settings.GEMINI_API_KEY)
-                self.model = genai.GenerativeModel('gemini-1.5-flash')
-                logger.info("Gemini client initialized")
+                
+                # Try to use Gemini 2.5 Pro first (Pro subscription), fallback to Flash
+                try:
+                    self.model = genai.GenerativeModel('gemini-2.5-pro')
+                    # Test the Pro model
+                    test_response = self.model.generate_content("Test")
+                    self.model_name = 'gemini-2.5-pro'
+                    logger.info("Gemini 2.5 Pro client initialized successfully (Pro subscription active)")
+                except Exception as pro_error:
+                    logger.warning(f"Gemini 2.5 Pro not available ({pro_error}), falling back to Flash")
+                    self.model = genai.GenerativeModel('gemini-1.5-flash')
+                    self.model_name = 'gemini-1.5-flash'
+                    logger.info("Gemini 1.5 Flash client initialized (fallback)")
             else:
                 logger.warning("Gemini API key not found or library not available")
+                self.model_name = None
         except Exception as e:
             logger.error(f"Failed to initialize Gemini client: {e}")
+            self.model_name = None
     
     async def analyze_speech_text(self, text: str, context: Dict[str, Any] = None) -> Dict[str, Any]:
         """
@@ -251,7 +264,7 @@ Provide precise, evidence-based analysis with specific examples from the transcr
                 # Add metadata
                 analysis['metadata'] = {
                     'service': 'gemini',
-                    'model': 'gemini-1.5-flash',
+                    'model': getattr(self, 'model_name', 'unknown'),
                     'original_text_length': len(original_text),
                     'analysis_timestamp': context.get('timestamp') if context else None,
                     'processing_successful': True
