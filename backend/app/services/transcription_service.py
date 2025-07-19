@@ -210,7 +210,8 @@ class TranscriptionService:
                 filler_words=True,
                 numerals=True,
                 profanity_filter=True,
-                redact=["pci", "numbers"],
+                # Removed "numbers" from redact to preserve dates and numerical information
+                redact=["pci"],  # Only redact payment card info, keep dates and numbers
                 search=["interview", "presentation", "analysis"],
                 summarize="v2",
                 topics=True,

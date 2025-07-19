@@ -91,9 +91,16 @@ class GeminiAnalysisService:
         avg_sentence_length = word_count / max(1, sentences)
         
         prompt = f"""
-You are an expert speech and communication analyst with 15+ years of experience in interview coaching and performance assessment. Analyze the following interview speech transcript and provide a comprehensive, precise assessment.
+You are an expert speech and communication analyst. Analyze ONLY the exact text provided below. DO NOT make assumptions or add information not present in the transcript.
 
-TRANSCRIPT:
+**STRICT ANALYSIS RULES:**
+1. Count filler words by searching the EXACT text provided - if "um", "uh", "like", etc. are not in the text, report count as 0
+2. Base all analysis ONLY on what is actually written in the transcript
+3. DO NOT generate typical patterns or expected results
+4. If something is not present in the text, report it as absent (count = 0)
+5. Be factually accurate based solely on the provided transcript
+
+TRANSCRIPT TO ANALYZE (EXACT TEXT):
 "{text}"
 
 CONTEXT:
@@ -101,9 +108,9 @@ CONTEXT:
 - Word count: {word_count}
 - Sentence count: {sentences}
 - Average sentence length: {avg_sentence_length:.1f} words
-- Analysis type: Professional interview performance evaluation
+- Analysis type: Text-only analysis (no audio/video data)
 
-CRITICAL: Provide HIGHLY DETAILED and ACCURATE analysis in the following JSON format. Be precise with numbers and specific with feedback:
+CRITICAL: Analyze ONLY this exact transcript. Count filler words by searching the text above. If words like 'um', 'uh', 'like' are not present in the transcript, report count as 0. Do not assume typical speech patterns.
 
 {{
     "overall_assessment": {{
@@ -273,6 +280,9 @@ Provide precise, evidence-based analysis with specific examples from the transcr
                 # Validate and ensure all required fields exist
                 analysis = self._validate_analysis_structure(analysis, original_text)
                 
+                # Cross-validate against actual text to prevent hallucination
+                analysis = self._cross_validate_against_text(analysis, original_text)
+                
                 return analysis
             else:
                 logger.warning("No JSON found in Gemini response")
@@ -340,6 +350,70 @@ Provide precise, evidence-based analysis with specific examples from the transcr
             analysis['detailed_feedback'] = "Analysis completed successfully. Please review the detailed metrics above for comprehensive feedback."
         
         return analysis
+    
+    def _cross_validate_against_text(self, analysis: Dict[str, Any], original_text: str) -> Dict[str, Any]:
+        """Cross-validate Gemini analysis against actual text to prevent hallucination"""
+        try:
+            # Get actual filler word count from our precise method
+            actual_filler_analysis = asyncio.run(self.analyze_filler_words(original_text))
+            actual_count = actual_filler_analysis['total_count']
+            
+            # Check if Gemini reported filler words when there are none
+            if 'filler_words' in analysis:
+                gemini_count = analysis['filler_words'].get('total_count', 0)
+                
+                # If Gemini reported filler words but our analysis finds none (or vice versa)
+                if abs(gemini_count - actual_count) > 2:  # Allow small discrepancy
+                    logger.warning(f"Gemini hallucination detected: reported {gemini_count} fillers, actual count is {actual_count}")
+                    
+                    # Override with actual counts
+                    analysis['filler_words']['total_count'] = actual_count
+                    analysis['filler_words']['frequency_per_100_words'] = actual_filler_analysis['frequency_per_100_words']
+                    analysis['filler_words']['severity'] = actual_filler_analysis['severity']
+                    
+                    # Update common_fillers with actual data
+                    common_fillers = []
+                    for filler_type, data in actual_filler_analysis['by_type'].items():
+                        common_fillers.append({
+                            'word': filler_type,
+                            'count': data['count'],
+                            'impact': 'medium' if data['count'] > 3 else 'low'
+                        })
+                    analysis['filler_words']['common_fillers'] = common_fillers
+                    
+                    # Add hallucination warning to metadata
+                    if 'metadata' not in analysis:
+                        analysis['metadata'] = {}
+                    analysis['metadata']['hallucination_detected'] = True
+                    analysis['metadata']['corrected_filler_count'] = True
+                    
+                    logger.info(f"Corrected filler word analysis: {gemini_count} -> {actual_count}")
+            
+            # Validate confidence indicators against actual text analysis
+            if 'confidence_indicators' in analysis:
+                actual_confidence = asyncio.run(self.analyze_speech_confidence(original_text))
+                
+                # Check for major discrepancies in confidence analysis
+                gemini_confident = analysis['confidence_indicators'].get('decisive_statements', 0)
+                actual_confident = actual_confidence.get('confident_phrases', 0)
+                
+                if abs(gemini_confident - actual_confident) > 3:
+                    logger.warning(f"Confidence analysis discrepancy: Gemini {gemini_confident}, actual {actual_confident}")
+                    
+                    # Use actual confidence data
+                    analysis['confidence_indicators']['decisive_statements'] = actual_confident
+                    analysis['confidence_indicators']['hedge_words'] = actual_confidence['hedge_words']
+                    analysis['confidence_indicators']['uncertainty_phrases'] = actual_confidence['uncertain_phrases']
+                    
+                    if 'metadata' not in analysis:
+                        analysis['metadata'] = {}
+                    analysis['metadata']['confidence_corrected'] = True
+            
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Cross-validation failed: {e}")
+            return analysis
     
     def _count_basic_fillers(self, text: str) -> int:
         """Count basic filler words in text"""
