@@ -51,7 +51,7 @@ InterviewAI is a comprehensive platform that uses artificial intelligence to hel
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
+   git clone <[https://github.com/VANSHTalyani/InterviewAI/](https://github.com/VANSHTalyani/InterviewAI/)>
    cd InterviewAI/backend
    ```
 
@@ -214,4 +214,4 @@ This project is licensed under the MIT License.
 
 ## Support
 
-For support, email [your-email] or create an issue in the repository.
+For support, interview7ai@gmail.com or create an issue in the repository.
