@@ -1,6 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { AuthProvider } from './contexts/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
 import Navigation from './components/Navigation';
 import AppLayout from './components/AppLayout';
 import HomePage from './pages/HomePage';
@@ -15,25 +17,51 @@ import { UserProfile } from './components/UserProfile';
 
 function App() {
   return (
-    <ThemeProvider>
-      <Router>
-        <Routes>
-          {/* Public pages - no sidebar */}
-          <Route path="/" element={<HomePage />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/signup" element={<SignUpPage />} />
+    <AuthProvider>
+      <ThemeProvider>
+        <Router>
+          <Routes>
+            {/* Public pages - no sidebar */}
+            <Route path="/" element={<HomePage />} />
+            <Route path="/home" element={<HomePage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/signup" element={<SignUpPage />} />
 
-          {/* App pages - with sidebar */}
-          <Route path="/dashboard" element={<AppLayout><Dashboard /></AppLayout>} />
-          <Route path="/analyze" element={<AppLayout><Analyze /></AppLayout>} />
-          <Route path="/history" element={<AppLayout><History /></AppLayout>} />
-          <Route path="/progress" element={<AppLayout><Progress /></AppLayout>} />
-          <Route path="/settings" element={<AppLayout><Settings /></AppLayout>} />
-          <Route path="/profile" element={<AppLayout><UserProfile /></AppLayout>} />
-        </Routes>
-      </Router>
-    </ThemeProvider>
+            {/* Protected App pages - with sidebar */}
+            <Route path="/dashboard" element={
+              <ProtectedRoute>
+                <AppLayout><Dashboard /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/analyze" element={
+              <ProtectedRoute>
+                <AppLayout><Analyze /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/history" element={
+              <ProtectedRoute>
+                <AppLayout><History /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/progress" element={
+              <ProtectedRoute>
+                <AppLayout><Progress /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <AppLayout><Settings /></AppLayout>
+              </ProtectedRoute>
+            } />
+            <Route path="/profile" element={
+              <ProtectedRoute>
+                <AppLayout><UserProfile /></AppLayout>
+              </ProtectedRoute>
+            } />
+          </Routes>
+        </Router>
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
 

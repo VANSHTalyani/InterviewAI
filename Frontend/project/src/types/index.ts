@@ -70,3 +70,129 @@ export interface ProgressMetrics {
     content: number;
   };
 }
+
+// Backend Analysis Types
+export interface BackendAnalysisResult {
+  success: boolean;
+  filename: string;
+  user_id: string;
+  analysis_timestamp: string;
+  transcription: {
+    service: string;
+    text: string;
+    confidence: number;
+    duration: number;
+    word_count: number;
+    segments_count: number;
+    metadata: any;
+  };
+  ai_analysis: {
+    overall_assessment: {
+      overall_score: number;
+      confidence_score: number;
+      clarity_score: number;
+    };
+    filler_words: {
+      total_count: number;
+      severity: string;
+      words: Array<{
+        word: string;
+        count: number;
+        timestamps?: number[];
+      }>;
+    };
+    communication_strengths: string[];
+    areas_for_improvement: string[];
+    recommendations: string[];
+    interview_readiness: {
+      level: string;
+      score: number;
+    };
+  };
+  quick_insights: {
+    overall_score: number;
+    confidence_level: number;
+    clarity_score: number;
+    filler_word_count: number;
+    speaking_rate: number;
+    readiness_level: string;
+  };
+  recommendations: {
+    top_3_strengths: string[];
+    top_3_improvements: string[];
+    immediate_actions: string[];
+  };
+  video_metadata: {
+    duration: number;
+    format: string;
+    size: number;
+    resolution?: string;
+  };
+  report_info?: {
+    report_id: string;
+    pdf_path?: string;
+    json_path?: string;
+  };
+}
+
+export interface UploadResponse {
+  message: string;
+  filename: string;
+  file_size: number;
+  status: string;
+  upload_time: string;
+}
+
+export interface ProcessingStatus {
+  filename: string;
+  audio_extracted: boolean;
+  frames_extracted: boolean;
+  frame_count: number;
+  processing_complete: boolean;
+  audio_path?: string;
+  frames_path?: string;
+}
+
+export interface QuickAnalysisResult {
+  success: boolean;
+  filename: string;
+  quick_results: {
+    transcription_service: string;
+    word_count: number;
+    duration: number;
+    speaking_rate_wpm: number;
+    confidence_score: number;
+    filler_word_count: number;
+    filler_severity: string;
+  };
+  text_preview: string;
+}
+
+export interface ServicesStatus {
+  timestamp: string;
+  services: {
+    deepgram: {
+      available: boolean;
+      configured: boolean;
+    };
+    gemini: {
+      available: boolean;
+      configured: boolean;
+    };
+    openai: {
+      available: boolean;
+      configured: boolean;
+    };
+    assemblyai: {
+      available: boolean;
+      configured: boolean;
+    };
+    google_speech: {
+      available: boolean;
+      configured: boolean;
+    };
+  };
+  primary_transcription_service: string;
+  analysis_service: string;
+  overall_status: string;
+}

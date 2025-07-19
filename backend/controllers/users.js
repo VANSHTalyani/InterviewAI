@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Interview = require('../models/Interview');
 const { validationResult } = require('express-validator');
 
 // @desc    Get all users
@@ -135,6 +136,37 @@ exports.deleteUser = async (req, res, next) => {
     res.status(200).json({
       success: true,
       data: {}
+    });
+  } catch (err) {
+    console.error(err.message);
+    next(err);
+  }
+};
+
+// @desc    Get user stats
+// @route   GET /api/users/stats
+// @access  Private
+exports.getUserStats = async (req, res, next) => {
+  try {
+    const stats = await Interview.aggregate([  
+      { $match: { user: req.user.id } },
+      { $group: {
+          _id: null,
+          totalInterviews: { $sum: 1 },
+          completedInterviews: { $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] } },
+          pendingInterviews: { $sum: { $cond: [{ $eq: ["$status", "pending"] }, 1, 0] } },
+          averageScore: { $avg: "$analysis.overallScore" }
+        }
+      }
+    ]);
+    res.status(200).json({
+      success: true,
+      data: stats[0] || {
+        totalInterviews: 0,
+        completedInterviews: 0,
+        pendingInterviews: 0,
+        averageScore: 0
+      }
     });
   } catch (err) {
     console.error(err.message);

@@ -24,29 +24,30 @@ async def upload_video(
     """
     try:
         # Validate file type
-        if not file.content_type.startswith('video/'):
+        if not file.content_type or not file.content_type.startswith('video/'):
             raise HTTPException(status_code=400, detail="Only video files are allowed")
         
-        # Check file size
-        content = await file.read()
-        file_size = len(content)
-        
-        if file_size > settings.MAX_FILE_SIZE:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"File size ({file_size} bytes) exceeds maximum limit ({settings.MAX_FILE_SIZE} bytes)"
-            )
-        
         # Generate unique filename
-        file_extension = os.path.splitext(file.filename)[1]
+        file_extension = os.path.splitext(file.filename or 'video.mp4')[1] if file.filename else '.mp4'
         unique_filename = f"{uuid.uuid4()}{file_extension}"
         
-        # Save file to local storage
+        # Save file to local storage with streaming
         file_path = os.path.join(settings.UPLOAD_DIR, unique_filename)
-        with open(file_path, "wb") as f:
-            f.write(content)
+        file_size = 0
         
-        logger.info(f"Video uploaded successfully: {unique_filename}")
+        with open(file_path, "wb") as f:
+            while chunk := await file.read(8192):  # Read in 8KB chunks
+                file_size += len(chunk)
+                if file_size > settings.MAX_FILE_SIZE:
+                    # Delete partial file and raise error
+                    os.unlink(file_path)
+                    raise HTTPException(
+                        status_code=400, 
+                        detail=f"File size exceeds maximum limit ({settings.MAX_FILE_SIZE} bytes)"
+                    )
+                f.write(chunk)
+        
+        logger.info(f"Video uploaded successfully: {unique_filename} ({file_size} bytes)")
         
         return {
             "message": "Video uploaded successfully",

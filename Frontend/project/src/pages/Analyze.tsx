@@ -5,35 +5,127 @@ import { AnalysisDashboard } from '../components/AnalysisDashboard';
 import { FeedbackTimeline } from '../components/FeedbackTimeline';
 import { FillerWordsVisualizer } from '../components/FillerWordsVisualizer';
 import { useStore } from '../store/useStore';
+import { analysisAPI } from '../services/api';
+import { UploadResponse, BackendAnalysisResult, AnalysisResult, InterviewSession } from '../types';
 import { mockSessions } from '../data/mockData';
 
 export const Analyze: React.FC = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [isUploading, setIsUploading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisComplete, setAnalysisComplete] = useState(false);
-  const [currentAnalysis, setCurrentAnalysis] = useState(mockSessions[0]);
+  const [currentAnalysis, setCurrentAnalysis] = useState<InterviewSession | null>(null);
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleFileUpload = (file: File) => {
+// API Actions
+const uploadFileToServer = async (file: File): Promise<UploadResponse> => {
+  const response = await analysisAPI.uploadVideo(file);
+  return response;
+};
+
+const triggerAnalysis = async (filename: string): Promise<BackendAnalysisResult> => {
+  const response = await analysisAPI.analyzeSpeech(filename);
+  return response;
+};
+
+const handleFileUpload = async (file: File) => {
     setIsUploading(true);
+    setError(null);
     
-    // Simulate upload progress
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setIsUploading(false);
-          // Simulate analysis completion
-          setTimeout(() => {
-            setAnalysisComplete(true);
-          }, 2000);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 300);
+    try {
+      // Step 1: Upload file to server
+      setUploadProgress(20);
+      const uploadResponse = await uploadFileToServer(file);
+      setUploadedFilename(uploadResponse.filename);
+      setUploadProgress(40);
+      
+      // Step 2: Process video (extract audio)
+      await analysisAPI.processVideo(uploadResponse.filename);
+      setUploadProgress(60);
+      
+      // Step 3: Start analysis
+      setIsAnalyzing(true);
+      setUploadProgress(80);
+      const analysisResponse = await triggerAnalysis(uploadResponse.filename);
+      
+      // Step 4: Convert to UI format
+      const convertedAnalysis = await handleAnalysisResponse(analysisResponse);
+      setUploadProgress(100);
+      
+      // Create session object
+      const session: InterviewSession = {
+        id: Date.now().toString(),
+        title: file.name,
+        duration: analysisResponse.video_metadata.duration || 0,
+        uploadedAt: new Date(),
+        status: 'completed',
+        analysis: convertedAnalysis,
+      };
+      
+      setCurrentAnalysis(session);
+      setAnalysisComplete(true);
+      
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      setError(error instanceof Error ? error.message : 'Analysis failed');
+    } finally {
+      setIsUploading(false);
+      setIsAnalyzing(false);
+    }
   };
 
-  if (analysisComplete && currentAnalysis.analysis) {
+async function handleAnalysisResponse(response: BackendAnalysisResult): Promise<AnalysisResult> {
+  const { 
+    ai_analysis,
+    quick_insights,
+    transcription,
+    video_metadata,
+  } = response;
+
+  // Add safety checks for nested properties
+  const overallAssessment = ai_analysis?.overall_assessment || {};
+  const fillerWords = ai_analysis?.filler_words || { words: [], total_count: 0 };
+  const communicationStrengths = ai_analysis?.communication_strengths || [];
+  const recommendations = ai_analysis?.recommendations || [];
+  const interviewReadiness = ai_analysis?.interview_readiness || { score: 0 };
+  const quickInsights = quick_insights || {};
+  const transcriptionData = transcription || { confidence: 0 };
+
+  return {
+    overallScore: overallAssessment.overall_score || 0,
+    bodyLanguage: {
+      score: Math.min(communicationStrengths.length * 20, 100), // Convert count to score
+      insights: communicationStrengths,
+      eyeContact: Math.random() * 100, // Placeholder
+      posture: Math.random() * 100,   // Placeholder
+      gestures: Math.random() * 100,  // Placeholder
+      facialExpressions: Math.random() * 100, // Placeholder
+    },
+    speech: {
+      score: overallAssessment.clarity_score || 0,
+      clarity: transcriptionData.confidence * 100 || 0,
+      pace: quickInsights.speaking_rate || 0,
+      volume: Math.random() * 100, // Placeholder
+      fillerWords: (fillerWords.words || []).map(word => ({
+        word: word.word,
+        timestamp: word.timestamps?.[0] || 0,
+        confidence: Math.random() * 90 + 10, // Random confidence
+      })),
+      tonalVariety: Math.random() * 100, // Placeholder
+    },
+    content: {
+      score: interviewReadiness.score || 0,
+      structure: Math.random() * 100, // Placeholder
+      relevance: Math.random() * 100, // Placeholder
+      completeness: Math.random() * 100, // Placeholder
+    },
+    timeline: [], // Needs implementation
+    recommendations: recommendations || [],
+  };
+}
+
+if (analysisComplete && currentAnalysis?.analysis) {
     return (
       <div className="space-y-6">
         <motion.div
@@ -87,6 +179,34 @@ export const Analyze: React.FC = () => {
         uploadProgress={uploadProgress}
       />
 
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-6"
+        >
+          <div className="flex items-center">
+            <div className="w-8 h-8 bg-red-100 dark:bg-red-800 rounded-full flex items-center justify-center mr-3">
+              <svg className="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-medium text-red-900 dark:text-red-100">
+                Analysis Failed
+              </h3>
+              <p className="text-red-700 dark:text-red-300 mt-1">{error}</p>
+            </div>
+          </div>
+          <button
+            onClick={() => setError(null)}
+            className="mt-4 bg-red-100 dark:bg-red-800 text-red-800 dark:text-red-100 px-4 py-2 rounded-lg hover:bg-red-200 dark:hover:bg-red-700 transition-colors"
+          >
+            Try Again
+          </button>
+        </motion.div>
+      )}
+
       {isUploading && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -95,11 +215,29 @@ export const Analyze: React.FC = () => {
         >
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-            Analyzing your interview...
+            {uploadProgress < 40 ? 'Uploading video...' : 
+             uploadProgress < 60 ? 'Processing video...' :
+             uploadProgress < 80 ? 'Extracting audio...' :
+             isAnalyzing ? 'Analyzing speech...' : 'Finalizing results...'}
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Our AI is processing your video to provide detailed feedback
+            {uploadProgress < 40 ? 'Uploading your video to our secure servers' :
+             uploadProgress < 60 ? 'Preparing video for analysis' :
+             uploadProgress < 80 ? 'Extracting audio for transcription' :
+             isAnalyzing ? 'AI is analyzing your speech patterns and content' :
+             'Generating your personalized feedback report'}
           </p>
+          <div className="mt-4 w-64 mx-auto">
+            <div className="bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div 
+                className="bg-purple-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+              {uploadProgress}% Complete
+            </p>
+          </div>
         </motion.div>
       )}
     </div>

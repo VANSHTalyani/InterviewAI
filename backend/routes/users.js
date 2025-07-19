@@ -1,6 +1,6 @@
 const express = require('express');
 const { check } = require('express-validator');
-const { getUsers, getUser, updateProfile, updatePassword, deleteUser } = require('../controllers/users');
+const { getUsers, getUser, updateProfile, updatePassword, deleteUser, getUserStats } = require('../controllers/users');
 const { protect, authorize } = require('../middleware/auth');
 
 const router = express.Router();
@@ -26,6 +26,9 @@ router.put(
   ],
   updatePassword
 );
+
+// User stats route
+router.get('/stats', getUserStats);
 
 // Admin routes
 router.get('/', authorize('admin'), getUsers);

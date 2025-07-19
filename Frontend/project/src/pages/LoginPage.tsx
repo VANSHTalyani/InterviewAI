@@ -1,25 +1,36 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, ArrowLeft } from 'lucide-react';
 import AuthBackground from '../components/AuthBackground';
+import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
     
-    // Simulate login process
-    setTimeout(() => {
+    try {
+      await login({ email, password });
+      
+      // Redirect to the page they were trying to access, or dashboard
+      const from = (location.state as any)?.from?.pathname || '/dashboard';
+      navigate(from, { replace: true });
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
       setIsLoading(false);
-      navigate('/dashboard'); // This now goes to the advanced dashboard
-    }, 1500);
+    }
   };
 
   return (
@@ -47,6 +58,12 @@ const LoginPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-white mb-2">Welcome Back</h1>
             <p className="text-white/70">Sign in to your Interview AI account</p>
           </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
 
           <form onSubmit={handleLogin} className="space-y-6">
             <div>

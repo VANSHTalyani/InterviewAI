@@ -67,7 +67,7 @@ class Settings(BaseSettings):
     SENTRY_DSN: Optional[str] = None
     
     # CORS Configuration
-    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8080"]
+    CORS_ORIGINS: List[str] = ["http://localhost:3000", "http://localhost:8080", "http://localhost:5173"]
     
     @field_validator("UPLOAD_DIR")
     @classmethod
@@ -85,7 +85,8 @@ class Settings(BaseSettings):
     
     model_config = {
         "env_file": ".env",
-        "case_sensitive": True
+        "case_sensitive": True,
+        "extra": "ignore"
     }
 
 

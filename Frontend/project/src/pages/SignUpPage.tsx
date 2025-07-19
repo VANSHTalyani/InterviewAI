@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock, User, ArrowLeft } from 'lucide-react';
 import AuthBackground from '../components/AuthBackground';
+import { useAuth } from '../contexts/AuthContext';
 
 const SignUpPage: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -14,17 +15,43 @@ const SignUpPage: React.FC = () => {
     confirmPassword: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
   const navigate = useNavigate();
+  const { register } = useAuth();
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
     setIsLoading(true);
     
-    // Simulate signup process
-    setTimeout(() => {
+    // Validate passwords match
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match');
       setIsLoading(false);
-      navigate('/dashboard'); // This now goes to the advanced dashboard
-    }, 1500);
+      return;
+    }
+
+    // Validate password length
+    if (formData.password.length < 6) {
+      setError('Password must be at least 6 characters long');
+      setIsLoading(false);
+      return;
+    }
+    
+    try {
+      const name = `${formData.firstName} ${formData.lastName}`.trim();
+      await register({
+        name,
+        email: formData.email,
+        password: formData.password
+      });
+      
+      navigate('/dashboard', { replace: true });
+    } catch (err: any) {
+      setError(err.message || 'Registration failed');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,6 +86,12 @@ const SignUpPage: React.FC = () => {
             <h1 className="text-3xl font-bold text-white mb-2">Create Account</h1>
             <p className="text-white/70">Join Interview AI and ace your next interview</p>
           </div>
+
+          {error && (
+            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
 
           <form onSubmit={handleSignUp} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
