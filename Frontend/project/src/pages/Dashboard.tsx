@@ -1,22 +1,59 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { useStore } from '../store/useStore';
-import { mockSessions } from '../data/mockData';
+import { interviewsAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import {
   PlusIcon,
   PlayIcon,
   ClockIcon,
   ChartBarIcon,
   TrophyIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/react/24/outline';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 
 export const Dashboard: React.FC = () => {
-  const { user, progress } = useStore();
+  const { user, progress, sessions, setSessions } = useStore();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  const recentSessions = mockSessions.slice(0, 3);
+  useEffect(() => {
+    const fetchSessions = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const fetchedSessions = await interviewsAPI.getAll();
+        setSessions(fetchedSessions);
+      } catch (err) {
+        setError('Failed to load sessions');
+        console.error('Error fetching sessions:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchSessions();
+  }, [setSessions]);
+
+  const recentSessions = sessions.slice(0, 3);
+
+  const handleLogout = async () => {
+    try {
+      setIsLoggingOut(true);
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -26,21 +63,42 @@ export const Dashboard: React.FC = () => {
         animate={{ opacity: 1, y: 0 }}
         className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl p-8 text-white"
       >
-        <h1 className="text-3xl font-bold mb-2">
-          Welcome back, {user?.name}!
-        </h1>
-        <p className="text-purple-100 mb-6">
-          Ready to improve your interview skills? Let's analyze your next session.
-        </p>
-        <Link to="/analyze">
+        <div className="flex justify-between items-start mb-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">
+              Welcome back, {user?.name}!
+            </h1>
+            <p className="text-purple-100">
+              Ready to improve your interview skills? Let's analyze your next session.
+            </p>
+          </div>
           <Button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
             variant="secondary"
-            className="bg-white text-purple-600 hover:bg-gray-100"
+            className="bg-white text-purple-600 hover:bg-gray-100 disabled:opacity-50"
           >
-            <PlusIcon className="w-5 h-5 mr-2" />
-            New Analysis
+            {isLoggingOut ? (
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white" />
+            ) : (
+              <>
+                <ArrowRightOnRectangleIcon className="w-5 h-5 mr-2" />
+                Logout
+              </>
+            )}
           </Button>
-        </Link>
+        </div>
+        <div className="mt-6">
+          <Link to="/analyze">
+            <Button
+              variant="secondary"
+              className="bg-white text-purple-600 hover:bg-gray-100"
+            >
+              <PlusIcon className="w-5 h-5 mr-2" />
+              New Analysis
+            </Button>
+          </Link>
+        </div>
       </motion.div>
 
       {/* Quick Stats */}
@@ -139,53 +197,83 @@ export const Dashboard: React.FC = () => {
           </Link>
         </div>
         
-        <div className="space-y-4">
-          {recentSessions.map((session, index) => (
-            <motion.div
-              key={session.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
-            >
-              <div className="flex items-center space-x-4">
-                <div className="w-16 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden">
-                  <img
-                    src={session.thumbnailUrl}
-                    alt={session.title}
-                    className="w-full h-full object-cover"
-                  />
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+            <span className="ml-2 text-gray-600 dark:text-gray-400">Loading sessions...</span>
+          </div>
+        ) : error ? (
+          <div className="text-center py-8">
+            <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()} variant="outline" size="sm">
+              Try Again
+            </Button>
+          </div>
+        ) : recentSessions.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-600 dark:text-gray-400 mb-4">No sessions yet</p>
+            <Link to="/analyze">
+              <Button variant="primary" size="sm">
+                <PlusIcon className="w-4 h-4 mr-2" />
+                Start Your First Analysis
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {recentSessions.map((session, index) => (
+              <motion.div
+                key={session.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.1 }}
+                className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg"
+              >
+                <div className="flex items-center space-x-4">
+                  <div className="w-16 h-12 bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden flex items-center justify-center">
+                    {session.thumbnailUrl ? (
+                      <img
+                        src={session.thumbnailUrl}
+                        alt={session.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <PlayIcon className="w-6 h-6 text-gray-400" />
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-gray-900 dark:text-white">
+                      {session.title || 'Untitled Session'}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {session.duration ? `${Math.floor(session.duration / 60)}m ${session.duration % 60}s` : new Date(session.createdAt).toLocaleDateString()}
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-medium text-gray-900 dark:text-white">
-                    {session.title}
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    {Math.floor(session.duration / 60)}m {session.duration % 60}s
-                  </p>
+                
+                <div className="flex items-center space-x-3">
+                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                    session.status === 'completed'
+                      ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                      : session.status === 'processing'
+                      ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
+                      : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+                  }`}>
+                    {session.status}
+                  </span>
+                  {session.status === 'completed' && (
+                    <Link to={`/analysis/${session.id}`}>
+                      <Button variant="ghost" size="sm">
+                        <PlayIcon className="w-4 h-4 mr-1" />
+                        View
+                      </Button>
+                    </Link>
+                  )}
                 </div>
-              </div>
-              
-              <div className="flex items-center space-x-3">
-                <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                  session.status === 'completed'
-                    ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                    : session.status === 'processing'
-                    ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                    : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
-                }`}>
-                  {session.status}
-                </span>
-                {session.status === 'completed' && (
-                  <Button variant="ghost" size="sm">
-                    <PlayIcon className="w-4 h-4 mr-1" />
-                    View
-                  </Button>
-                )}
-              </div>
-            </motion.div>
-          ))}
-        </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </Card>
     </div>
   );
