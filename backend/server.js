@@ -19,6 +19,17 @@ app.use(cors({
   credentials: true
 }));
 
+// Request logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
+
+// Health check root route
+app.get('/', (req, res) => {
+  res.send('Backend is running!');
+});
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/interviewai')
   .then(() => console.log('MongoDB connected'))
@@ -45,7 +56,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-const PORT = process.env.NODE_PORT || 3001;
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
   console.log(`Node.js Server running on port ${PORT}`);
 });
