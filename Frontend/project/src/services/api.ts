@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
 
 // Create axios instance
 const api = axios.create({
@@ -174,6 +174,21 @@ export const interviewsAPI = {
   downloadReport: async (id: string, format: 'pdf' | 'json' = 'pdf') => {
     const response = await api.get(`/interviews/${id}/report?format=${format}`, {
       responseType: 'blob',
+    });
+    return response.data;
+  },
+
+  // Get user progress analytics
+  getProgress: async () => {
+    const response = await api.get('/interviews/progress');
+    return response.data;
+  },
+
+  // Save analysis results to database
+  saveAnalysisResults: async (interviewId: string, analysisData: any) => {
+    const response = await api.post('/interviews/save-analysis', {
+      interviewId,
+      analysisData
     });
     return response.data;
   },

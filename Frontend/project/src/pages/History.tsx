@@ -6,6 +6,7 @@ import { PlayIcon, ClockIcon, TrophyIcon, ExclamationCircleIcon } from '@heroico
 import { format } from 'date-fns';
 import { interviewsAPI } from '../services/api';
 import { useStore } from '../store/useStore';
+import { mockSessions } from '../data/mockData';
 import type { InterviewSession } from '../types';
 
 export const History: React.FC = () => {
@@ -24,11 +25,13 @@ export const History: React.FC = () => {
       try {
         setLoading(true);
         setError(null);
-        const data = await interviewsAPI.getSessions();
-        setSessions(data);
+        const response = await interviewsAPI.getAll();
+        setSessions(response.data || []);
       } catch (err) {
         console.error('Error fetching sessions:', err);
         setError('Failed to load interview sessions');
+        // Show some mock data so the page isn't completely empty
+        setSessions(mockSessions.slice(0, 2) || []);
       } finally {
         setLoading(false);
       }
@@ -106,7 +109,7 @@ export const History: React.FC = () => {
                           {formatDuration(session.duration || 0)}
                         </div>
                         <span>•</span>
-                        <span>{format(new Date(session.uploadedAt), 'MMM d, yyyy')}</span>
+                        <span>{format(new Date(session.createdAt), 'MMM d, yyyy')}</span>
                       </div>
                     </div>
                   </div>
@@ -131,9 +134,6 @@ export const History: React.FC = () => {
                       </div>
                     )}
 
-                    <Button variant="outline" size="sm">
-                      View Details
-                    </Button>
                   </div>
                 </div>
 
@@ -159,8 +159,8 @@ export const History: React.FC = () => {
                         </p>
                       </div>
                     </div>
-                  </div>
-                )}
+                    </div>
+                  )}
               </Card>
             </motion.div>
           ))}

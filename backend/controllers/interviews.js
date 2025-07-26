@@ -320,9 +320,23 @@ exports.analyzeInterview = async (req, res, next) => {
           summary: 'Overall good performance with clear communication. Areas for improvement include reducing filler words and improving body language.'
         };
 
-        // Update the interview with analysis results
+        // Update the interview with comprehensive analysis results
+        const comprehensiveAnalysis = {
+          ...mockAnalysis,
+          // Additional fields for progress tracking
+          analysisTimestamp: new Date(),
+          confidence: 0.85,
+          detailedMetrics: {
+            speechRate: 150, // words per minute
+            pauseCount: 12,
+            averagePauseLength: 1.2,
+            volumeVariation: 0.7,
+            articulationScore: 8.2
+          }
+        };
+
         await Interview.findByIdAndUpdate(interview._id, {
-          analysis: mockAnalysis,
+          analysis: comprehensiveAnalysis,
           status: 'completed',
           transcript: 'This is a mock transcript of the interview...' // In a real implementation, this would be the actual transcript
         });

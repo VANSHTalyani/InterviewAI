@@ -8,6 +8,7 @@ interface AppState {
   isAnalyzing: boolean;
   progress: ProgressMetrics;
   setUser: (user: User | null) => void;
+  setSessions: (sessions: InterviewSession[]) => void;
   addSession: (session: InterviewSession) => void;
   updateSession: (id: string, updates: Partial<InterviewSession>) => void;
   setCurrentSession: (session: InterviewSession | null) => void;
@@ -38,6 +39,7 @@ export const useStore = create<AppState>((set) => ({
     },
   },
   setUser: (user) => set({ user }),
+  setSessions: (sessions) => set({ sessions }),
   addSession: (session) => set((state) => ({ sessions: [...state.sessions, session] })),
   updateSession: (id, updates) => set((state) => ({
     sessions: state.sessions.map(s => s.id === id ? { ...s, ...updates } : s),

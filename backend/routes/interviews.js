@@ -14,6 +14,11 @@ const {
   analyzeInterview
 } = require('../controllers/interviews');
 
+const {
+  getProgress,
+  saveAnalysisResults
+} = require('../controllers/progress');
+
 // Set up multer storage
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -76,5 +81,11 @@ router.post('/:id/upload', upload.single('recording'), uploadRecording);
 
 // Analyze interview
 router.post('/:id/analyze', analyzeInterview);
+
+// Progress analytics
+router.get('/progress', getProgress);
+
+// Save analysis results
+router.post('/save-analysis', saveAnalysisResults);
 
 module.exports = router;

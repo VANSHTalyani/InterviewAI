@@ -3,7 +3,8 @@ Video processor service for handling video processing and database operations
 """
 import os
 import asyncio
-import ffmpeg
+import subprocess
+import json
 from typing import Optional, List, Dict, Any
 from datetime import datetime
 from sqlalchemy.orm import Session
@@ -14,10 +15,21 @@ from app.core.logging import logger
 from app.models.schemas import VideoCreate, VideoResponse, VideoStatusEnum
 from app.services.storage import storage_service
 
-# Set ffmpeg and ffprobe paths for ffmpeg-python
-ffmpeg._run.FFMPEG_BINARY = settings.FFMPEG_PATH
-ffmpeg._run.FFPROBE_BINARY = settings.FFMPEG_PATH.replace('ffmpeg', 'ffprobe')
+def get_abs_path(*parts):
+    """Join and return an absolute path, handling slashes for all OSes."""
+    return os.path.abspath(os.path.join(*parts))
 
+# Update ffmpeg and ffprobe paths to the user's actual installation path
+ffmpeg_path = r'C:\Users\swaya\AppData\Local\Programs\FFmpeg\bin\ffmpeg.exe'
+ffprobe_path = r'C:\Users\swaya\AppData\Local\Programs\FFmpeg\bin\ffprobe.exe'
+
+# For running commands
+# ffmpeg._run.FFMPEG_BINARY = settings.FFMPEG_PATH
+#ffmpeg._run.FFPROBE_BINARY = settings.FFMPEG_PATH.replace('ffmpeg', 'ffprobe')
+
+
+# For probing metadata
+# metadata = ffmpeg.probe('input.mp4', cmd=ffprobe_path)
 
 class VideoProcessor:
     """
@@ -25,7 +37,8 @@ class VideoProcessor:
     """
     
     def __init__(self):
-        self.ffmpeg_path = settings.FFMPEG_PATH
+        self.ffmpeg_path = ffmpeg_path
+        self.ffprobe_path = ffprobe_path
     
     async def create_video_record(
         self,
@@ -155,21 +168,27 @@ class VideoProcessor:
     
     async def _get_video_metadata(self, file_path: str) -> Dict[str, Any]:
         """
-        Get video metadata using ffmpeg
-        
-        Args:
-            file_path: Path to the video file
-            
-        Returns:
-            Dictionary containing video metadata
+        Get video metadata using ffprobe via subprocess
         """
         try:
-            probe = ffmpeg.probe(file_path)
-            video_stream = next((stream for stream in probe['streams'] if stream['codec_type'] == 'video'), None)
-            
+            file_path = get_abs_path(file_path)
+            if not os.path.exists(file_path):
+                logger.error(f"File does not exist: {file_path}")
+                raise FileNotFoundError(f"File does not exist: {file_path}")
+            cmd = [
+                ffprobe_path,
+                '-v', 'error',
+                '-select_streams', 'v:0',
+                '-show_entries', 'stream=width,height,r_frame_rate,codec_name',
+                '-show_entries', 'format=duration,bit_rate',
+                '-of', 'json',
+                file_path
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            probe = json.loads(result.stdout)
+            video_stream = probe['streams'][0] if probe['streams'] else None
             if not video_stream:
                 raise ValueError("No video stream found")
-            
             metadata = {
                 'duration': float(probe['format']['duration']),
                 'width': int(video_stream['width']),
@@ -178,81 +197,65 @@ class VideoProcessor:
                 'codec': video_stream['codec_name'],
                 'bitrate': int(probe['format']['bit_rate']) if 'bit_rate' in probe['format'] else None
             }
-            
             return metadata
-            
         except Exception as e:
             logger.error(f"Failed to get video metadata: {e}")
             raise
     
     async def _extract_audio(self, video_path: str, filename: str) -> str:
-        """
-        Extract audio from video file
-        
-        Args:
-            video_path: Path to the video file
-            filename: Original filename
-            
-        Returns:
-            Path to the extracted audio file
-        """
         try:
-            # Create audio filename
             audio_filename = f"audio_{os.path.splitext(filename)[0]}.wav"
-            audio_path = os.path.join(settings.UPLOAD_DIR, "audio", audio_filename)
-            
-            # Extract audio using ffmpeg
-            (
-                ffmpeg
-                .input(video_path)
-                .output(
-                    audio_path,
-                    acodec='pcm_s16le',
-                    ar=settings.AUDIO_SAMPLE_RATE,
-                    ac=1  # mono
-                )
-                .overwrite_output()
-                .run(quiet=True)
-            )
-            
+            audio_path = get_abs_path(settings.UPLOAD_DIR, "audio", audio_filename)
+            video_path = get_abs_path(video_path)
+            logger.info(f"Extracting audio from video: {video_path}")
+            logger.info(f"Audio output path: {audio_path}")
+            # Ensure output directory exists
+            os.makedirs(os.path.dirname(audio_path), exist_ok=True)
+            # Check input video existence
+            if not os.path.exists(video_path):
+                logger.error(f"Input video file does not exist: {video_path}")
+                raise FileNotFoundError(f"Input video file does not exist: {video_path}")
+            cmd = [
+                ffmpeg_path,
+                '-i', video_path,
+                '-acodec', 'pcm_s16le',
+                '-ar', str(settings.AUDIO_SAMPLE_RATE),
+                '-ac', '1',
+                audio_path,
+                '-y'
+            ]
+            result = subprocess.run(cmd, capture_output=True, text=True)
+            logger.error(f"ffmpeg stdout: {result.stdout}")
+            logger.error(f"ffmpeg stderr: {result.stderr}")
+            if not os.path.exists(audio_path):
+                logger.error(f"Audio file was not created: {audio_path}")
+                raise FileNotFoundError(f"Audio file was not created: {audio_path}")
             logger.info(f"Audio extracted: {audio_path}")
             return audio_path
-            
         except Exception as e:
             logger.error(f"Failed to extract audio: {e}")
             raise
     
     async def _extract_frames(self, video_path: str, filename: str) -> str:
         """
-        Extract frames from video file at regular intervals
-        
-        Args:
-            video_path: Path to the video file
-            filename: Original filename
-            
-        Returns:
-            Path to the frames directory
+        Extract frames from video file at regular intervals using ffmpeg via subprocess
         """
         try:
-            # Create frames directory
-            frames_dir = os.path.join(settings.UPLOAD_DIR, "frames", os.path.splitext(filename)[0])
+            frames_dir = get_abs_path(settings.UPLOAD_DIR, "frames", os.path.splitext(filename)[0])
             Path(frames_dir).mkdir(parents=True, exist_ok=True)
-            
-            # Extract frames at specified intervals
-            frame_pattern = os.path.join(frames_dir, "frame_%04d.jpg")
-            
-            (
-                ffmpeg
-                .input(video_path)
-                .filter('fps', fps=1/settings.FRAME_EXTRACTION_INTERVAL)
-                .output(frame_pattern)
-                .overwrite_output()
-                .run(quiet=True)
-            )
-            
+            frame_pattern = get_abs_path(frames_dir, "frame_%04d.jpg")
+            video_path = get_abs_path(video_path)
+            fps = 1 / settings.FRAME_EXTRACTION_INTERVAL
+            cmd = [
+                ffmpeg_path,
+                '-i', video_path,
+                '-vf', f'fps={fps}',
+                frame_pattern,
+                '-y'
+            ]
+            subprocess.run(cmd, capture_output=True, text=True)
             logger.info(f"Frames extracted to: {frames_dir}")
             return frames_dir
-            
         except Exception as e:
             logger.error(f"Failed to extract frames: {e}")
             raise
@@ -283,12 +286,12 @@ class VideoProcessor:
             base_name = os.path.splitext(filename)[0]
             
             # Clean up audio file
-            audio_path = os.path.join(settings.UPLOAD_DIR, "audio", f"audio_{base_name}.wav")
+            audio_path = get_abs_path(settings.UPLOAD_DIR, "audio", f"audio_{base_name}.wav")
             if os.path.exists(audio_path):
                 os.remove(audio_path)
             
             # Clean up frames directory
-            frames_dir = os.path.join(settings.UPLOAD_DIR, "frames", base_name)
+            frames_dir = get_abs_path(settings.UPLOAD_DIR, "frames", base_name)
             if os.path.exists(frames_dir):
                 import shutil
                 shutil.rmtree(frames_dir)
@@ -309,7 +312,7 @@ class VideoProcessor:
             Path to audio file or None if not found
         """
         base_name = os.path.splitext(filename)[0]
-        audio_path = os.path.join(settings.UPLOAD_DIR, "audio", f"audio_{base_name}.wav")
+        audio_path = get_abs_path(settings.UPLOAD_DIR, "audio", f"audio_{base_name}.wav")
         
         if os.path.exists(audio_path):
             return audio_path
@@ -326,7 +329,7 @@ class VideoProcessor:
             Path to frames directory or None if not found
         """
         base_name = os.path.splitext(filename)[0]
-        frames_dir = os.path.join(settings.UPLOAD_DIR, "frames", base_name)
+        frames_dir = get_abs_path(settings.UPLOAD_DIR, "frames", base_name)
         
         if os.path.exists(frames_dir):
             return frames_dir

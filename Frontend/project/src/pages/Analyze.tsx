@@ -5,7 +5,7 @@ import { AnalysisDashboard } from '../components/AnalysisDashboard';
 import { FeedbackTimeline } from '../components/FeedbackTimeline';
 import { FillerWordsVisualizer } from '../components/FillerWordsVisualizer';
 import { useStore } from '../store/useStore';
-import { analysisAPI } from '../services/api';
+import { analysisAPI, interviewsAPI } from '../services/api';
 import { UploadResponse, BackendAnalysisResult, AnalysisResult, InterviewSession } from '../types';
 import { mockSessions } from '../data/mockData';
 
@@ -68,8 +68,26 @@ const handleFileUpload = async (file: File) => {
       };
       
       setCurrentAnalysis(session);
-      setAnalysisComplete(true);
       
+      // Step 5: Try to save to database (optional - don't fail if it doesn't work)
+      try {
+        const interviewData = {
+          title: file.name,
+          type: 'behavioral' as const,
+        };
+        const interviewRecord = await interviewsAPI.create(interviewData);
+        await interviewsAPI.saveAnalysisResults(interviewRecord.data._id, convertedAnalysis);
+        console.log('Successfully saved to database');
+        // Update session with database ID
+        session.id = interviewRecord.data._id;
+        setCurrentAnalysis({...session});
+      } catch (saveError) {
+        console.warn('Failed to save to database, but analysis completed:', saveError);
+        // Continue with local session - don't fail the entire flow
+      }
+
+      setAnalysisComplete(true);
+
     } catch (error) {
       console.error('Analysis failed:', error);
       setError(error instanceof Error ? error.message : 'Analysis failed');
@@ -142,9 +160,9 @@ async function handleAnalysisResponse(response: BackendAnalysisResult): Promise<
       clarity: Math.round(speechQuality.articulation_score || overallAssess.clarity_score || 0),
       pace: Math.round(speechQuality.pace_score || 0),
       volume: Math.round(speechQuality.vocal_variety_score || 75),
-      fillerWords: detailedFillers.detailed_occurrences || (fillerWordsData.common_fillers || []).map((filler: any, index: number) => ({
+      fillerWords: detailedFillers.detailed_occurrences || (fillerWordsData.words || []).map((filler: any, index: number) => ({
         word: filler.word || '',
-        timestamp: index * ((transcriptionData.duration || 60) / (fillerWordsData.common_fillers?.length || 1)), // Better distribution
+        timestamp: index * 10 + 15, // Distribute timestamps
         confidence: 90 - (filler.count * 5), // Lower confidence for more frequent fillers
       })),
       tonalVariety: Math.round(speechQuality.vocal_variety_score || 68),

@@ -41,7 +41,6 @@ export const Dashboard: React.FC = () => {
     fetchSessions();
   }, [setSessions]);
 
-  const recentSessions = sessions.slice(0, 3);
 
   const handleLogout = async () => {
     try {
@@ -209,7 +208,7 @@ export const Dashboard: React.FC = () => {
               Try Again
             </Button>
           </div>
-        ) : recentSessions.length === 0 ? (
+        ) : (!sessions || !Array.isArray(sessions) || sessions.length === 0) ? (
           <div className="text-center py-8">
             <p className="text-gray-600 dark:text-gray-400 mb-4">No sessions yet</p>
             <Link to="/analyze">
@@ -221,7 +220,7 @@ export const Dashboard: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {recentSessions.map((session, index) => (
+            {Array.isArray(sessions) && sessions.map((session, index) => (
               <motion.div
                 key={session.id}
                 initial={{ opacity: 0, x: -20 }}

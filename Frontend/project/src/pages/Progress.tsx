@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card } from '../components/ui/Card';
 import { ProgressBar } from '../components/ui/ProgressBar';
 import { useStore } from '../store/useStore';
+import { interviewsAPI } from '../services/api';
 import {
   LineChart,
   Line,
@@ -15,25 +16,94 @@ import {
   Area,
 } from 'recharts';
 
+interface ProgressData {
+  totalSessions: number;
+  averageScore: number;
+  improvementRate: number;
+  streakDays: number;
+  skillProgress: {
+    bodyLanguage: number;
+    speech: number;
+    content: number;
+  };
+  progressOverTime: any[];
+  weeklyData: any[];
+  insights: any[];
+}
+
 export const Progress: React.FC = () => {
-  const { progress } = useStore();
+  const [progressData, setProgressData] = useState<ProgressData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const progressData = [
-    { session: 1, score: 65, bodyLanguage: 60, speech: 68, content: 67 },
-    { session: 2, score: 70, bodyLanguage: 68, speech: 72, content: 70 },
-    { session: 3, score: 72, bodyLanguage: 70, speech: 74, content: 72 },
-    { session: 4, score: 75, bodyLanguage: 73, speech: 76, content: 76 },
-    { session: 5, score: 78, bodyLanguage: 75, speech: 78, content: 81 },
-    { session: 6, score: 80, bodyLanguage: 78, speech: 80, content: 83 },
-    { session: 7, score: 82, bodyLanguage: 80, speech: 82, content: 85 },
-  ];
+  useEffect(() => {
+    const fetchProgressData = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const response = await interviewsAPI.getProgress();
+        setProgressData(response.data);
+      } catch (err) {
+        console.error('Error fetching progress data:', err);
+        setError('Failed to load progress data');
+        // Fallback to static data
+        setProgressData({
+          totalSessions: 0,
+          averageScore: 0,
+          improvementRate: 0,
+          streakDays: 0,
+          skillProgress: {
+            bodyLanguage: 0,
+            speech: 0,
+            content: 0,
+          },
+          progressOverTime: [],
+          weeklyData: [],
+          insights: [{
+            type: 'info',
+            title: 'Getting Started',
+            message: 'Complete your first interview to see progress insights'
+          }]
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const weeklyData = [
-    { week: 'Week 1', sessions: 2, avgScore: 67 },
-    { week: 'Week 2', sessions: 3, avgScore: 73 },
-    { week: 'Week 3', sessions: 4, avgScore: 78 },
-    { week: 'Week 4', sessions: 3, avgScore: 82 },
-  ];
+    fetchProgressData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Your Progress
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Loading your progress data...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+            Your Progress
+          </h1>
+          <p className="text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!progressData) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -62,11 +132,11 @@ export const Progress: React.FC = () => {
                 Body Language
               </span>
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                {progress.skillProgress.bodyLanguage}%
+                {progressData.skillProgress.bodyLanguage}%
               </span>
             </div>
             <ProgressBar
-              value={progress.skillProgress.bodyLanguage}
+              value={progressData.skillProgress.bodyLanguage}
               color="success"
             />
           </div>
@@ -76,11 +146,11 @@ export const Progress: React.FC = () => {
                 Speech Quality
               </span>
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                {progress.skillProgress.speech}%
+                {progressData.skillProgress.speech}%
               </span>
             </div>
             <ProgressBar
-              value={progress.skillProgress.speech}
+              value={progressData.skillProgress.speech}
               color="warning"
             />
           </div>
@@ -90,11 +160,11 @@ export const Progress: React.FC = () => {
                 Content Quality
               </span>
               <span className="text-sm text-gray-600 dark:text-gray-400">
-                {progress.skillProgress.content}%
+                {progressData.skillProgress.content}%
               </span>
             </div>
             <ProgressBar
-              value={progress.skillProgress.content}
+              value={progressData.skillProgress.content}
               color="primary"
             />
           </div>
@@ -108,7 +178,7 @@ export const Progress: React.FC = () => {
         </h2>
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={progressData}>
+            <LineChart data={progressData.progressOverTime}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="session" />
               <YAxis />
@@ -154,7 +224,7 @@ export const Progress: React.FC = () => {
           </h2>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={weeklyData}>
+              <AreaChart data={progressData.weeklyData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="week" />
                 <YAxis />
@@ -177,30 +247,31 @@ export const Progress: React.FC = () => {
             Improvement Insights
           </h2>
           <div className="space-y-4">
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <h3 className="font-medium text-green-900 dark:text-green-300 mb-2">
-                Strong Progress
-              </h3>
-              <p className="text-sm text-green-700 dark:text-green-400">
-                Your body language scores have improved by 18% over the last month
-              </p>
-            </div>
-            <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
-              <h3 className="font-medium text-yellow-900 dark:text-yellow-300 mb-2">
-                Focus Area
-              </h3>
-              <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                Consider working on speech clarity and pace for better overall scores
-              </p>
-            </div>
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <h3 className="font-medium text-blue-900 dark:text-blue-300 mb-2">
-                Next Goal
-              </h3>
-              <p className="text-sm text-blue-700 dark:text-blue-400">
-                Aim for consistent 85+ scores to reach the advanced level
-              </p>
-            </div>
+            {progressData.insights.length > 0 ? (
+              progressData.insights.map((insight, index) => {
+                const colorClass = insight.type === 'success' ? 'green' : 
+                                 insight.type === 'warning' ? 'yellow' : 'blue';
+                return (
+                  <div key={index} className={`p-4 bg-${colorClass}-50 dark:bg-${colorClass}-900/20 rounded-lg`}>
+                    <h3 className={`font-medium text-${colorClass}-900 dark:text-${colorClass}-300 mb-2`}>
+                      {insight.title}
+                    </h3>
+                    <p className={`text-sm text-${colorClass}-700 dark:text-${colorClass}-400`}>
+                      {insight.message}
+                    </p>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <h3 className="font-medium text-blue-900 dark:text-blue-300 mb-2">
+                  Getting Started
+                </h3>
+                <p className="text-sm text-blue-700 dark:text-blue-400">
+                  Complete more interviews to see personalized insights and recommendations.
+                </p>
+              </div>
+            )}
           </div>
         </Card>
       </div>
