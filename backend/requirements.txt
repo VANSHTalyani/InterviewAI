@@ -1,0 +1,69 @@
+# Core FastAPI and server dependencies
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+python-multipart>=0.0.6
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+
+# Database and storage
+sqlalchemy>=2.0.25
+alembic>=1.13.1
+psycopg2-binary>=2.9.9
+redis>=5.0.1
+
+# Video and audio processing
+ffmpeg-python>=0.2.0
+opencv-python>=4.9.0.80
+Pillow>=10.2.0
+
+# AI and ML libraries
+mediapipe>=0.10.21
+transformers>=4.37.0
+torch>=2.2.0
+spacy>=3.7.2
+textstat>=0.7.3
+openai>=1.12.0
+google-cloud-speech>=2.24.0
+assemblyai>=0.21.0
+deepgram-sdk>=4.6.0
+google-generativeai>=0.3.2
+
+# NLP and text processing
+nltk>=3.8.1
+numpy>=1.26.3
+pandas>=2.2.0
+
+# HTTP requests and API integration
+requests>=2.31.0
+httpx>=0.25.2
+aiofiles>=23.2.1
+
+# Task queue and async processing
+celery>=5.3.4
+kombu>=5.3.4
+
+# PDF generation and reporting
+reportlab>=4.0.9
+pdfkit>=1.0.0
+
+# Firebase and cloud storage
+firebase-admin>=6.4.0
+google-cloud-storage>=2.14.0
+supabase>=2.3.4
+
+# Environment and configuration
+python-dotenv>=1.0.0
+pydantic>=2.6.1
+pydantic-settings>=2.1.0
+
+# Logging and monitoring
+loguru>=0.7.2
+sentry-sdk[fastapi]>=1.40.0
+
+# Testing and development
+pytest>=7.0.0
+pytest-asyncio>=0.23.4
+pytest-cov>=4.1.0
+black>=24.1.1
+isort>=5.13.2
+flake8>=7.0.0
